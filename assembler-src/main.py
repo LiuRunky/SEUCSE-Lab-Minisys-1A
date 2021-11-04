@@ -1,3 +1,4 @@
+import math
 from ply import lex, yacc
 
 tokens = (
@@ -10,13 +11,27 @@ tokens = (
     'LWICOM', 'DRCOM', 'BZICOM', 'SLLRCOM',
     'SICOM', 'BICOM', 'SRCOM', 'JBCOM',
     'BREAK', 'SYSCALL', 'ERET',
-    'IDNAME', 'PIDNAME'
+    'IDNAME', 'PIDNAME',
+    'COMMENT'
 )
 
 
-# when state = 0: check variables, add labels
+# when state = 0: add and check variables, add labels
 # when state = 1: check labels
 lex_yacc_analyze_state = 0
+
+# store data in format of [data, width, offset]
+# data is transformed to hexadecimal
+data_storage = []
+data_relative_offset = 0
+
+# MIPS assembly code in format of [code, offset]
+code_storage = []
+code_relative_offset = 0
+# expand pseudo code in format of [code, pseudo offset]
+expand_pseudo = []
+# label definition in format of [label, offset]
+label_definition = []
 
 
 ##############################
@@ -33,9 +48,6 @@ t_FLOAT = r"""\.float"""
 t_DOUBLE = r"""\.double"""
 t_ASCII = r"""\.ascii"""
 t_ASCIIZ = r"""\.asciiz"""
-
-t_VALUE = r"""(0[xX][0-9a-fA-F]+)|([0-9]+)|([01]+[bB])"""
-t_STRING = r"""\"[\s\S]*\""""
 
 t_REG = r"""\$(zero|at|v[01]|a[0-3]|t[0-9]|s[0-7]|k[01]|gp|sp|s8|fp|ra|
             ([1-2][0-9]|3[01]|[0-9]))"""
@@ -68,7 +80,9 @@ def t_PIDNAME(t):
                 break|syscall|eret|
                 lui|
                 lbu|lhu|lw|sb|sh|sw|
-                beq|bne|bgez|bgtz|blez|bltz|bgezal|bltzal
+                beq|bne|bgez|bgtz|blez|bltz|bgezal|bltzal|
+                push|pop|
+                jle|jge
             )[0-9a-zA-Z_\$\.]+
         )|
         (
@@ -84,10 +98,13 @@ def t_PIDNAME(t):
             jal[0-9a-qs-zA-QS-Z_\$\.][0-9a-zA-Z_\$\.]*
         )|
         (
+            j(g|l)[0-9a-df-zA-DF-Z_\$\.][0-9a-zA-Z_\$\.]*
+        )|
+        (
             (add|slt)[0-9a-hj-zA-H_\$\.][0-9a-zA-Z_\$\.]*
         )|
         (
-            j([0-9b-qs-zB-QS-Z_\$\.]|a[0-9a-km-zA-KM-Z_\$\.])[0-9a-zA-Z_\$\.]*
+            j([0-9b-fh-km-qs-zB-FH-KM-QS-Z_\$\.]|a[0-9a-km-zA-KM-Z_\$\.])[0-9a-zA-Z_\$\.]*
         )
         """
     return t
@@ -178,19 +195,37 @@ def t_IDNAME(t):
     return t
 
 
+def t_VALUE(t):
+    r"""(0[xX][0-9a-fA-F]+)|([0-9]+)|([01]+[bB])"""
+    return t
+
+
+def t_STRING(t):
+    r"""\"[^\n\r\"]*\""""
+    return t
+
+
+def t_COMMENT(t):
+    r"""\#[ \S]*"""
+    return t
+
+
 t_ignore = ' \t'
 
 
 def t_error(t):
-    raise Exception('error {} at line {}'.format(t.value[0], t.lineno))
+    raise Exception('Lex error {} at line {}'.format(t.value[0], t.lineno))
 
 
 ###############################
 # Yacc components declaration #
 ###############################
 
+
 start = 'program'
 
+
+# definition info of labels and variables
 dict_label = {}
 dict_variable = {}
 
@@ -201,7 +236,8 @@ def p_empty(p):
 
 
 def p_program(p):
-    """program : data text"""
+    """program : data text
+               | ENDL data text"""
 
 
 def p_data(p):
@@ -216,27 +252,111 @@ def p_data_segment(p):
 
 def p_variables(p):
     """variables : empty
-                 | variables variable"""
+                 | variables variable
+                 | variables SPACE VALUE ENDL
+                 | variables ALIGN VALUE ENDL"""
+    global data_storage
+    global data_relative_offset
+
+    if len(p) == 5:
+        if p[2] == '.space':
+            for i in range(get_value(p[3])):
+                data_storage.append([0, 1, data_relative_offset])
+                data_relative_offset += 1
+        if p[2] == '.align':
+            rem = data_relative_offset % (1 << get_value(p[3]))
+            if rem != 0:
+                rem = (1 << get_value(p[3])) - rem
+            for i in range(rem):
+                data_storage.append([0, 1, data_relative_offset])
+                data_relative_offset += 1
 
 
 def p_variable(p):
     """variable : ENDL
                 | IDNAME COLON variable_data ENDL"""
-    if lex_yacc_analyze_state == 0 and len(p) > 1:
+    if lex_yacc_analyze_state == 0 and len(p) == 5:
         if p[1] in dict_variable:
             raise Exception('redefinition of variable at line {}'.format(p.lineno(1)))
         dict_variable[p[1]] = p.lineno(1)
 
 
 def p_variable_data(p):
-    """variable_data : variable_data COMMA VALUE
+    """variable_data : empty
+                     | variable_data COMMA VALUE
+                     | variable_data COMMA STRING
                      | BYTE VALUE
                      | HALF VALUE
                      | WORD VALUE
                      | FLOAT VALUE
                      | DOUBLE VALUE
                      | ASCII VALUE
-                     | variable_data COMMA STRING"""
+                     | ASCII STRING"""
+    global data_storage
+    global data_relative_offset
+
+    width = -1
+    if len(p) == 3:
+        if p[1] == '.byte':
+            width = 1
+            if invalid_value(p[2], 8):
+                raise Exception('data exceed BYTE at line {}'.format(p.lineno(2)))
+            data_storage.append([get_value(p[2]), 1, data_relative_offset])
+            data_relative_offset += 1
+        elif p[1] == '.half':
+            width = 2
+            if data_relative_offset % width != 0:
+                raise Exception('data not aligned to HALF at line {}'.format(p.lineno(2)))
+            if invalid_value(p[2], 16):
+                raise Exception('data exceed HALF at line {}'.format(p.lineno(2)))
+            data_storage.append([get_value(p[2]), 2, data_relative_offset])
+            data_relative_offset += 2
+        elif p[1] == '.word':
+            width = 4
+            if data_relative_offset % width != 0:
+                raise Exception('data not aligned to WORD at line {}'.format(p.lineno(2)))
+            if invalid_value(p[2], 32):
+                raise Exception('data exceed WORD at line {}'.format(p.lineno(2)))
+            data_storage.append([get_value(p[2]), 4, data_relative_offset])
+            data_relative_offset += 4
+        elif p[1] == '.ascii':
+            width = 40
+            if len(p[2]) >= 2 and p[2][0] == p[2][-1] == '\"':
+                for i in range(1, len(p[2])-1):
+                    data_storage.append([ord(p[2][i]), 1, data_relative_offset])
+                    data_relative_offset += 1
+            else:
+                if invalid_value(p[2], 8):
+                    raise Exception('data exceed ASCII at line {}'.format(p.lineno(2)))
+                data_storage.append([get_value(p[2]), 1, data_relative_offset])
+                data_relative_offset += 1
+
+    if len(p) == 4:
+        width = p[1]
+        if len(p[3]) >= 2 and p[3][0] == p[3][-1] == '\"':
+            if width != 40:
+                raise Exception('incompatible value type at line {}'.format(p.lineno))
+            for i in range(1, len(p[3]) - 1):
+                data_storage.append([ord(p[3][i]), 1, data_relative_offset])
+                data_relative_offset += 1
+        else:
+            data_type = 'BYTE'
+            if width == 8:
+                data_type = 'BYTE'
+            elif width == 16:
+                data_type = 'HALF'
+            elif width == 32:
+                data_type = 'WORD'
+            elif width == 40:
+                data_type = 'ASCII'
+            if invalid_value(p[3], width % 32):
+                raise Exception('data exceed {} at line {}'.format(data_type, p.lineno(3)))
+            data_storage.append([get_value(p[3]), int((width % 32) / 8), data_relative_offset])
+            data_relative_offset += int((width % 32) / 8)
+
+    if width < 0:
+        raise Exception('unexpected error of data width at line {}'.format(p.lineno(3)))
+    p[0] = width
 
 
 def p_text(p):
@@ -254,10 +374,15 @@ def p_code(p):
 
 def p_start_label(p):
     """start_label : IDNAME COLON"""
+    global code_relative_offset
+    global label_definition
+
     if lex_yacc_analyze_state == 0:
         if p[1] in dict_label:
             raise Exception('redefinition of label at line {}'.format(p.lineno(1)))
         dict_label[p[1]] = p.lineno(1)
+
+    label_definition.append([p[1] + p[2], code_relative_offset])
 
 
 def p_instructions(p):
@@ -269,6 +394,9 @@ def p_instructions(p):
 def p_label(p):
     """label : IDNAME COLON
              | PIDNAME COLON"""
+    global code_relative_offset
+    global label_definition
+
     if lex_yacc_analyze_state == 0:
         if p[1] in dict_variable:
             raise Exception('label definition conflicts with variable at line'.
@@ -276,6 +404,8 @@ def p_label(p):
         if p[1] in dict_label:
             raise Exception('redefinition of label at line {}'.format(p.lineno(1)))
         dict_label[p[1]] = p.lineno(1)
+
+    label_definition.append([p[1] + p[2], code_relative_offset])
 
 
 def p_instruction(p):
@@ -300,6 +430,35 @@ def p_command(p):
                | SYSCALL
                | ERET
                | NOP"""
+    global code_relative_offset
+    global expand_pseudo
+
+    if p[1] == 'push':
+        expand_pseudo.append(['addi $sp,$sp,-4', code_relative_offset])
+        expand_pseudo.append(['sw {},0($sp)'.format(p[2]), code_relative_offset])
+    if p[1] == 'pop':
+        expand_pseudo.append(['lw {},0($sp)'.format(p[2]), code_relative_offset])
+        expand_pseudo.append(['addi $sp,$sp,4', code_relative_offset])
+    if p[1] == 'jg':
+        expand_pseudo.append(['slt $1,{},{}'.format(p[4], p[2]), code_relative_offset])
+        expand_pseudo.append(['bne $1,$0,{}'.format(p[6]), code_relative_offset])
+    if p[1] == 'jge':
+        expand_pseudo.append(['slt $1,{},{}'.format(p[2], p[4]), code_relative_offset])
+        expand_pseudo.append(['beq $1,$0,{}'.format(p[6]), code_relative_offset])
+    if p[1] == 'jl':
+        expand_pseudo.append(['slt $1,{},{}'.format(p[2], p[4]), code_relative_offset])
+        expand_pseudo.append(['bne $1,$0,{}'.format(p[6]), code_relative_offset])
+    if p[1] == 'jle':
+        expand_pseudo.append(['slt $1,{},{}'.format(p[4], p[2]), code_relative_offset])
+        expand_pseudo.append(['beq $1,$0,{}'.format(p[6]), code_relative_offset])
+
+    temp_string = p[1]
+    if len(p) > 2:
+        temp_string += ' '
+        for i in range(2, len(p)):
+            temp_string += p[i]
+    code_storage.append([temp_string, code_relative_offset])
+    code_relative_offset += 1
 
 
 def p_immediate(p):
@@ -310,9 +469,11 @@ def p_immediate(p):
         if not p[1][0].isdigit():
             if p[1] not in dict_variable and p[1] not in dict_label:
                 raise Exception('undefined variable or label at line {}'.format(p.lineno(1)))
+    p[0] = p[1]
 
 
-def get_index(str):
+# get radix
+def get_radix(str):
     if str[0:2] == '0x' or str[0:2] == '0X':
         return 16
     elif str[-1] == 'b' or str[-1] == 'B':
@@ -321,32 +482,44 @@ def get_index(str):
         return 10
 
 
+# convert every radix to decimal
 def get_value(str):
-    if get_index(str) == 16:
+    if get_radix(str) == 16:
         return int(str, 16)
-    elif get_index(str) == 2:
+    elif get_radix(str) == 2:
         return int(str[0:-1], 2)
     else:
         return int(str, 10)
 
 
+# judge whether given #str is a valid #width number
+def invalid_value(str, width):
+    decimal_width = math.ceil(math.log10(1 << width))
+    if get_value(str) >= (1 << width) or \
+            (get_radix(str) == 2 and len(str) > width + 1) or \
+            (get_radix(str) == 10 and len(str) > decimal_width) or \
+            (get_radix(str) == 16 and len(str) > width / 4 + 2):
+        return True
+    else:
+        return False
+
+
 if __name__ == '__main__':
+    # file input
     file = open('input.txt', 'r')
     data = file.read()
     file.close()
 
+    # convert MIPS assembly code to lowercase
     data = data.lower() + '\n'
 
     lexer = lex.lex()
     parser = yacc.yacc(debug=True)
-    parser.parse(data)
-
-    lexer.lineno = 1
-    lex_yacc_analyze_state = 1
-    parser.parse(data)
 
     lex_list = []
+    no_comment_data = ""
 
+    # conduct preliminary lexical analysis to obtain token list
     lexer.input(data)
     lexer.lineno = 1
     while True:
@@ -355,12 +528,54 @@ if __name__ == '__main__':
             break
         lex_list.append([token.type, token.value, token.lineno, token.lexpos])
 
+    # preprocess using token list, delete comment and redundant end-lines
+    for i in range(len(lex_list)-1, -1, -1):
+        if lex_list[i][0] == 'ENDL':
+            if i == 0 or lex_list[i-1][0] == 'COLON' or lex_list[i-1][0] == 'COMMENT':
+                lex_list.remove(lex_list[i])
+        if lex_list[i][0] == 'COMMENT':
+            lex_list.remove(lex_list[i])
+
+    for i in range(len(lex_list)):
+        if lex_list[i][0] == 'ENDL':
+            # print()
+            no_comment_data += '\n'
+        else:
+            # print(' ', lex_list[i][1], end="")
+            no_comment_data += ' ' + lex_list[i][1]
+
+    # for i in range(len(lex_list)):
+    #     print(lex_list[i])
+
+    # first syntax analysis, acquire and check variable definitions, acquire label definitions
+    lexer.lineno = 1
+    lex_yacc_analyze_state = 0
+    parser.parse(no_comment_data)
+
+    # second syntax analysis, check label definitions
+    data_storage.clear()
+    data_relative_offset = 0
+    code_storage.clear()
+    expand_pseudo.clear()
+    label_definition.clear()
+    code_relative_offset = 0
+    lexer.lineno = 1
+    lex_yacc_analyze_state = 1
+    parser.parse(no_comment_data)
+
+    # print data storage layout of data segment
+    print('data storage info in format of [value, width, offset]')
+    for i in range(len(data_storage)):
+        print(data_storage[i])
+
     # 文法分析之外的检查：
     # 1. 变量/标号的重复定义/未定义 [OK]
-    # 2. VALUE的范围 [OK,但未对variable检查]
-    # 3. STRING的检查，是否准备支持混合？
-    # 4. 浮点数？不一定准备支持
-    # 5. 注释的支持
+    # 2. VALUE的范围（数据段与代码段） [OK]
+    # 3. STRING的检查，是否准备支持混合？ [OK,支持混合]
+    # 4. 浮点数？不准备支持
+    # 5. 注释的支持 [OK]
+    # 6. 对于.space和.align的支持，以及数据对齐的检查 [OK, 要求单开一行]
+    # 7. 对于代码的预处理：删回车删注释等 [大概OK]
 
     for i in range(len(lex_list)):
         [cur_type, cur_value, cur_lineno, cur_pos] = lex_list[i]
@@ -375,17 +590,14 @@ if __name__ == '__main__':
             while True:
                 [nxt_type, nxt_value, nxt_lineno, nxt_pos] = lex_list[j]
 
-                if get_value(nxt_value) >= (1 << 8) or\
-                        (get_index(nxt_value) == 2 and len(nxt_value) > 8+1) or\
-                        (get_index(nxt_value) == 10 and len(nxt_value) > 3) or\
-                        (get_index(nxt_value) == 16 and len(nxt_value) > 2+2):
+                if invalid_value(nxt_value, 8):
                     raise Exception('data exceed BYTE at line {}'.format(nxt_lineno))
 
-                j = j + 1
+                j += 1
                 [nxt_type, nxt_value, nxt_lineno, nxt_pos] = lex_list[j]
                 if nxt_type == 'ENDL':
                     break
-                j = j + 1
+                j += 1
             i = j
 
         elif cur_type == 'HALF':
@@ -393,17 +605,14 @@ if __name__ == '__main__':
             while True:
                 [nxt_type, nxt_value, nxt_lineno, nxt_pos] = lex_list[j]
 
-                if get_value(nxt_value) >= (1 << 16) or\
-                        (get_index(nxt_value) == 2 and len(nxt_value) > 16+1) or\
-                        (get_index(nxt_value) == 10 and len(nxt_value) > 5) or\
-                        (get_index(nxt_value) == 16 and len(nxt_value) > 4+2):
+                if invalid_value(nxt_value, 16):
                     raise Exception('data exceed HALF at line {}'.format(nxt_lineno))
 
-                j = j + 1
+                j += 1
                 [nxt_type, nxt_value, nxt_lineno, nxt_pos] = lex_list[j]
                 if nxt_type == 'ENDL':
                     break
-                j = j + 1
+                j += 1
             i = j
 
         elif cur_type == 'WORD':
@@ -411,73 +620,69 @@ if __name__ == '__main__':
             while True:
                 [nxt_type, nxt_value, nxt_lineno, nxt_pos] = lex_list[j]
 
-                if get_value(nxt_value) >= (1 << 32) or\
-                        (get_index(nxt_value) == 2 and len(nxt_value) > 32+1) or\
-                        (get_index(nxt_value) == 10 and len(nxt_value) > 9) or\
-                        (get_index(nxt_value) == 16 and len(nxt_value) > 8+2):
+                if invalid_value(nxt_value, 32):
                     raise Exception('data exceed WORD at line {}'.format(nxt_lineno))
 
-                j = j + 1
+                j += 1
                 [nxt_type, nxt_value, nxt_lineno, nxt_pos] = lex_list[j]
                 if nxt_type == 'ENDL':
                     break
-                j = j + 1
+                j += 1
             i = j
 
         elif cur_type == 'ICOM':
             [nxt_type, nxt_value, nxt_lineno, nxt_pos] = lex_list[i+5]
             if nxt_type != 'VALUE':
                 raise Exception('invalid immediate at line {}'.format(nxt_lineno))
-            elif get_value(nxt_value) >= (1 << 16) or \
-                    (get_index(nxt_value) == 2 and len(nxt_value) > 16+1) or \
-                    (get_index(nxt_value) == 10 and len(nxt_value) > 5) or \
-                    (get_index(nxt_value) == 16 and len(nxt_value) > 4+2):
+            elif invalid_value(nxt_value, 16):
                 raise Exception('immediate exceed limit at line {}'.format(nxt_lineno))
-            i = i + 5
+            i += 5
 
         elif cur_type == 'JCOM':
             [nxt_type, nxt_value, nxt_lineno, nxt_pos] = lex_list[i+1]
             if nxt_type != 'VALUE':
                 if nxt_value in dict_variable:
                     raise Exception('mistake variable as label at line {}'.format(nxt_lineno))
-            elif get_value(nxt_value) >= (1 << 26) or \
-                    (get_index(nxt_value) == 2 and len(nxt_value) > 26+1) or \
-                    (get_index(nxt_value) == 10 and len(nxt_value) > 8) or \
-                    (get_index(nxt_value) == 16 and len(nxt_value) > 7+2):
+            elif invalid_value(nxt_value, 26):
                 raise Exception('immediate exceed limit at line {}'.format(nxt_lineno))
-            i = i + 5
+            i += 5
 
         elif cur_type == 'LWICOM':
             [nxt_type, nxt_value, nxt_lineno, nxt_pos] = lex_list[i+3]
             if nxt_type != 'VALUE':
                 if nxt_value in dict_label:
                     raise Exception('mistake label as variable at line {}'.format(nxt_lineno))
-            elif get_value(nxt_value) >= (1 << 16) or \
-                    (get_index(nxt_value) == 2 and len(nxt_value) > 16+1) or \
-                    (get_index(nxt_value) == 10 and len(nxt_value) > 5) or \
-                    (get_index(nxt_value) == 16 and len(nxt_value) > 4+2):
+            elif invalid_value(nxt_value, 16):
                 raise Exception('immediate exceed limit at line {}'.format(nxt_lineno))
-            i = i + 4
+            i += 4
 
         elif cur_type == 'BZICOM' or cur_type == 'SICOM':
             [nxt_type, nxt_value, nxt_lineno, nxt_pos] = lex_list[i+3]
             if nxt_type != 'VALUE':
                 raise Exception('invalid immediate at line {}'.format(nxt_lineno))
-            elif get_value(nxt_value) >= (1 << 16) or \
-                    (get_index(nxt_value) == 2 and len(nxt_value) > 16+1) or \
-                    (get_index(nxt_value) == 10 and len(nxt_value) > 5) or \
-                    (get_index(nxt_value) == 16 and len(nxt_value) > 4+2):
+            elif invalid_value(nxt_value, 16):
                 raise Exception('immediate exceed limit at line {}'.format(nxt_lineno))
-            i = i + 3
+            i += 3
 
         elif cur_type == 'BICOM' or cur_type == 'JBCOM':
             [nxt_type, nxt_value, nxt_lineno, nxt_pos] = lex_list[i+5]
             if nxt_type != 'VALUE':
                 if nxt_type in dict_variable:
                     raise Exception('mistake variable as label at line {}'.format(nxt_lineno))
-            elif get_value(nxt_value) >= (1 << 16) or \
-                    (get_index(nxt_value) == 2 and len(nxt_value) > 16+1) or \
-                    (get_index(nxt_value) == 10 and len(nxt_value) > 5) or \
-                    (get_index(nxt_value) == 16 and len(nxt_value) > 4+2):
+            elif invalid_value(nxt_value, 16):
                 raise Exception('immediate exceed limit at line {}'.format(nxt_lineno))
-            i = i + 5
+            i += 5
+
+    # print code storage layout of code segment
+    j = 0
+    k = 0
+    print('code storage info in format of [code, pre-reordered offset]')
+    for i in range(len(code_storage)):
+        while k < len(label_definition) and label_definition[k][1] == code_storage[i][1]:
+            print(label_definition[k])
+            k += 1
+        if j == len(expand_pseudo) or code_storage[i][1] != expand_pseudo[j][1]:
+            print(code_storage[i])
+        while j < len(expand_pseudo) and expand_pseudo[j][1] == code_storage[i][1]:
+            print(expand_pseudo[j])
+            j += 1

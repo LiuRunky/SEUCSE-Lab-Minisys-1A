@@ -1,19 +1,30 @@
+
 .DATA 0X0
 	BUF0:	.word 0x55
 	BUF1:	.word 0xAA
+	BUF2:   .byte 0x22
+	.align 1
+	BUF3:   .half 0x5555
+	STR:    .ascii "abcde", 0x45, "fg"
+	.space 1
+	.align 2
 
+# this is a comment
 .TEXT 0X0000
 start:
 	lw 	$v0,BUF0($zero)
 	lw  	$v1,BUF1($zero)
 	add	$at,$v0,$v1
 	sw	$at,8($zero)
+	push	$at
 	subu	$a0,$v1,$v0
 	slt	$a0,$v0,$at
 	and	$at,$v1,$a3
 	or	$a2,$v0,$at
 	xor	$a3,$v0,$v1
 	nor	$a2,$a1,$at
+	pop	$at
+	jl	$2,$3,lop1
 lop:
 	beq	$v1,$v0,lop
 lop1:

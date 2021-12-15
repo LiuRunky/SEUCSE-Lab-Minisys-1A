@@ -1,10 +1,10 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Module: IF/IDÁ÷Ë®¼Ä´æÆ÷
+// Module: IF/IDæµæ°´å¯„å­˜å™¨
 //////////////////////////////////////////////////////////////////////////////////
 
 /*
-×îÖÕ¼Ä´æÆ÷»®·Ö£º
+æœ€ç»ˆå¯„å­˜å™¨åˆ’åˆ†ï¼š
 reg[31:0]	     PC_plus_4
 reg[63:32]	     PC_plus_4_latch
 reg[95:64]	     Instruction
@@ -21,6 +21,7 @@ reg[129]	     ALU_src
 reg[130]	     Memory_sign
 reg[132:131]	 Memory_data_width
 reg[134:133]     L_type, S_type
+reg[135]         Nonflush
 */
 
 module IF_ID(
@@ -46,13 +47,14 @@ module IF_ID(
     Break_out,Syscall_out,Eret_out,Reserved_instruction_out,
     Shift_out,ALU_op_out,ALU_src_out,
     Memory_sign_out,Memory_data_width_out,
-    L_type_out,S_type_out
+    L_type_out,S_type_out,
+    Nonflush_out
     );
     
     input   clock;
     input   reset;
     
-    reg[134:0]   register;
+    reg[135:0]   register;
     
     input[31:0] PC_plus_4_in;
     input[31:0] PC_plus_4_latch_in;
@@ -87,6 +89,7 @@ module IF_ID(
     output       Memory_sign_out;
     output[1:0]  Memory_data_width_out;
     output       L_type_out,S_type_out;
+    output       Nonflush_out;
 
 
 
@@ -104,11 +107,12 @@ module IF_ID(
     assign {ALU_src_out,ALU_op_out,Shift_out} = register[129:126];
     assign {Memory_data_width_out,Memory_sign_out} = register[132:130];
     assign {L_type_out,S_type_out} = register[134:133];
+    assign Nonflush_out = register[135];
     
     always @(negedge clock)
     begin
         if (reset)
-            register <= 135'h00_0000_0000_0000_0000_0000_0000_0000_0000;
+            register <= 136'h00_0000_0000_0000_0000_0000_0000_0000_0000;
         else
         begin
             register[31:0] <= PC_plus_4_in;
@@ -125,6 +129,7 @@ module IF_ID(
             register[129:126] <= {ALU_src_in,ALU_op_in,Shift_in};
             register[132:130] <= {Memory_data_width_in,Memory_sign_in};
             register[134:133] <= {L_type_in,S_type_in};
+            register[135] <= 1'b1;
         end
     end
     

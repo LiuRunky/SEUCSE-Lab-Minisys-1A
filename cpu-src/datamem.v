@@ -6,24 +6,35 @@
 
 module DataMEM(
     clock,
-    Memory_write,Address,Read_data,Write_data
+    Memory_write,Address,Read_data,Write_data,
+    Upg_rst_i,Upg_clk_i,Upg_wen_i,Upg_adr_i,Upg_dat_i,Upg_done_i
     );
     
     input       clock;
     input       Memory_write;
     input[31:0] Address;
-    input[31:0] Write_data;                                 //Ğ´½øRAMµÄÊı¾İ
-    output[31:0]    Read_data;                              //´ÓRAM¶Á³öµÄÊı¾İ
+    input[31:0] Write_data;                                 //å†™è¿›RAMçš„æ•°æ®
+    output[31:0]    Read_data;                              //ä»RAMè¯»å‡ºçš„æ•°æ®
+    
+    //UARTç¼–ç¨‹å™¨å¼•è„š
+    input       Upg_rst_i;                                  //UPG reset(é«˜ä¸ºactive)
+    input       Upg_clk_i;                                  //UPGæ—¶é’Ÿ(clk2)
+    input       Upg_wen_i;                                  //UPGå†™ä½¿èƒ½
+    input[13:0] Upg_adr_i;                                  //UPGå†™åœ°å€
+    input[31:0] Upg_dat_i;                                  //UPGå†™æ•°æ®
+    input       Upg_done_i;                                 //å½“ä¼ è¾“å®Œæˆåä¸ºé«˜
     
     wire clk;
-    assign clk = !clock;                                    //ÎªÁË½â¾öÊ±ÖÓÑÓ³ÙÎÊÌâ
+    assign clk = clock/*!clock*/;                                    //ä¸ºäº†è§£å†³æ—¶é’Ÿå»¶è¿Ÿé—®é¢˜
+    
+    wire kickoff = Upg_rst_i | ((~Upg_rst_i) & Upg_done_i);
     
     //64KB RAM
     ram ram(
-        .clka(clk),
-        .wea(Memory_write),
-        .addra(Address[15:2]),
-        .dina(Write_data),
+        .clka(kickoff ? clk : Upg_clk_i),
+        .wea(kickoff ? Memory_write : Upg_wen_i),
+        .addra(kickoff ? Address[15:2] : Upg_adr_i),
+        .dina(kickoff ? Write_data : Upg_dat_i),
         .douta(Read_data)
     );
     

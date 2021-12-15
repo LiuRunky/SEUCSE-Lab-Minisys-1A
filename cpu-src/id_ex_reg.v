@@ -1,10 +1,10 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Module: ID/EXÁ÷Ë®¼Ä´æÆ÷
+// Module: ID/EXæµæ°´å¯„å­˜å™¨
 //////////////////////////////////////////////////////////////////////////////////
 
 /*
-×îÖÕ¼Ä´æÆ÷»®·Ö£º
+æœ€ç»ˆå¯„å­˜å™¨åˆ’åˆ†ï¼š
 reg[31:0]	    PC_plus_4
 reg[63:32]	    PC_plus_4_latch
 reg[95:64]	    PC_exception
@@ -25,6 +25,7 @@ reg[283]	    ALU_src
 reg[284]	    Memory_sign
 reg[286:285]	Memory_data_width
 reg[288:287]    L_type, S_type
+reg[289]        Nonflush
 */
 
 module ID_EX(
@@ -42,6 +43,7 @@ module ID_EX(
     Shift_in,ALU_op_in,ALU_src_in,
     Memory_sign_in,Memory_data_width_in,
     L_type_in,S_type_in,
+    Nonflush_in,
 
     PC_plus_4_out,PC_plus_4_latch_out,
     PC_exception_out,CP0_data_out,
@@ -54,13 +56,14 @@ module ID_EX(
     Mfhi_out,Mflo_out,Mthi_out,Mtlo_out,
     Shift_out,ALU_op_out,ALU_src_out,
     Memory_sign_out,Memory_data_width_out,
-    L_type_out,S_type_out
+    L_type_out,S_type_out,
+    Nonflush_out
     );
     
     input   clock;
     input   reset;
     
-    reg[288:0]  register;
+    reg[289:0]  register;
     
     input[31:0] PC_plus_4_in;
     input[31:0] PC_plus_4_latch_in;
@@ -82,6 +85,7 @@ module ID_EX(
     input       Memory_sign_in;
     input[1:0]  Memory_data_width_in;
     input       L_type_in,S_type_in;
+    input      Nonflush_in;
 
     output[31:0] PC_plus_4_out;
     output[31:0] PC_plus_4_latch_out;
@@ -103,6 +107,7 @@ module ID_EX(
     output       Memory_sign_out;
     output[1:0]  Memory_data_width_out;
     output       L_type_out,S_type_out;
+    output       Nonflush_out;
     
     
     assign PC_plus_4_out = register[31:0];
@@ -123,11 +128,12 @@ module ID_EX(
     assign {ALU_src_out,ALU_op_out,Shift_out} = register[283:280];
     assign {Memory_data_width_out,Memory_sign_out} = register[286:284];
     assign {L_type_out,S_type_out} = register[288:287];
+    assign Nonflush_out = register[289];
 
     always @(negedge clock)
     begin
         if (reset)
-            register <= 289'h0_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_FFFF_FFFF_FFFF_FFFF_0000_0000_0000_0000;
+            register <= 290'h0_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_FFFF_FFFF_FFFF_FFFF_0000_0000_0000_0000;
         else
         begin
             register[31:0] <= PC_plus_4_in;
@@ -148,6 +154,7 @@ module ID_EX(
             register[283:280] <= {ALU_src_in,ALU_op_in,Shift_in};
             register[286:284] <= {Memory_data_width_in,Memory_sign_in};
             register[288:287] <= {L_type_in,S_type_in};
+            register[289] <= Nonflush_in;
         end
     end
     

@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Module: EX/MEM¡˜ÀÆºƒ¥Ê∆˜
+// Module: EX/MEMÊµÅÊ∞¥ÂØÑÂ≠òÂô®
 //////////////////////////////////////////////////////////////////////////////////
 
 /*
@@ -20,6 +20,7 @@ reg[276:272]    Write_back_address
 reg[281:277]	Memory_or_IO, Memory_read, Memory_write, IO_read, IO_write
 reg[282]	    Memory_sign
 reg[284:283]	Memory_data_width
+reg[285]        Nonflush
 */
 
 module EX_MEM(
@@ -35,6 +36,7 @@ module EX_MEM(
     Register_write_in,Write_back_address_in,
     Memory_or_IO_in,Memory_read_in,Memory_write_in,IO_read_in,IO_write_in,
     Memory_sign_in,Memory_data_width_in,
+    Nonflush_in,
  
     PC_add_result_out,PC_plus_4_latch_out,
     PC_exception_out,CP0_data_out,
@@ -45,13 +47,14 @@ module EX_MEM(
     Zero_out,Positive_out,Negative_out,
     Register_write_out,Write_back_address_out,
     Memory_or_IO_out,Memory_read_out,Memory_write_out,IO_read_out,IO_write_out,
-    Memory_sign_out,Memory_data_width_out
+    Memory_sign_out,Memory_data_width_out,
+    Nonflush_out
     );
     
     input   clock;
     input   reset;
     
-    reg[284:0]  register;
+    reg[285:0]  register;
     
     input[31:0] PC_add_result_in;
     input[31:0] PC_plus_4_latch_in;
@@ -69,6 +72,7 @@ module EX_MEM(
     input       Memory_or_IO_in,Memory_read_in,Memory_write_in,IO_read_in,IO_write_in;
     input       Memory_sign_in;
     input[1:0]  Memory_data_width_in;
+    input       Nonflush_in;
 
     output[31:0] PC_add_result_out;
     output[31:0] PC_plus_4_latch_out;
@@ -86,6 +90,7 @@ module EX_MEM(
     output       Memory_or_IO_out,Memory_read_out,Memory_write_out,IO_read_out,IO_write_out;
     output       Memory_sign_out;
     output[1:0]  Memory_data_width_out;
+    output       Nonflush_out;
     
     
     
@@ -106,11 +111,12 @@ module EX_MEM(
     assign {Memory_or_IO_out,Memory_read_out,Memory_write_out,IO_read_out,IO_write_out}
             = register[281:277];
     assign {Memory_data_width_out,Memory_sign_out} = register[284:282];
+    assign Nonflush_out = register[285];
     
     always @(negedge clock,posedge reset)
     begin
         if (reset)
-            register <= 285'h0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_FFFF_FFFF_FFFF_FFFF_0000_0000_0000_0000;
+            register <= 286'h0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_FFFF_FFFF_FFFF_FFFF_0000_0000_0000_0000;
         else
         begin
             register[31:0] <= PC_add_result_in;
@@ -130,6 +136,7 @@ module EX_MEM(
             register[281:277] <= {Memory_or_IO_in,Memory_read_in,Memory_write_in,
                     IO_read_in,IO_write_in};
             register[284:282] <= {Memory_data_width_in,Memory_sign_in};
+            register[285] <= Nonflush_in;
         end
     end
     

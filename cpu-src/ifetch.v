@@ -1,14 +1,14 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Module: È¡Ö·µ¥Ôª
-// Function:    1. ´ÓÖ¸Áî¼Ä´æÆ÷inst_memÖĞÈ¡³öÖ¸Áî
-//              2. ¸ù¾İ¸÷ÖÖÌø×ªÖ¸ÁîÓë±êÖ¾Éú³Énext_PC
-//              3. ĞŞ¸ÄPC²¢ÎªidecodeËø´æPC+4
+// Module: å–å€å•å…ƒ
+// Function:    1. ä»æŒ‡ä»¤å¯„å­˜å™¨inst_memä¸­å–å‡ºæŒ‡ä»¤
+//              2. æ ¹æ®å„ç§è·³è½¬æŒ‡ä»¤ä¸æ ‡å¿—ç”Ÿæˆnext_PC
+//              3. ä¿®æ”¹PCå¹¶ä¸ºidecodeé”å­˜PC+4
 //////////////////////////////////////////////////////////////////////////////////
 
 
 module Ifetch(
-    Instruction,Instruction_latch,
+    Instruction,Instruction_ex_mem,
     PC_plus_4,PC_plus_4_latch,
     clock,reset,
     Jr,Jalr,Jmp,Jal,
@@ -17,47 +17,49 @@ module Ifetch(
     PC_add_result,Read_data_rs,
     Rom_adr_o,Jpadr,
     PC_exception,
-    PC_plus_4_id_ex,flush_pipeline
+    Nonflush_ex_mem,PC_plus_4_id_ex,flush_pipeline
     );
     
     output[31:0]    Instruction;
-    input[31:0]     Instruction_latch;                      //ÓÉEX/MEMÁ÷Ë®¼Ä´æÆ÷´«À´µÄPCÖµ
-    output[31:0]    PC_plus_4;                              //Ò»°ãÒâÒåÉÏµÄPC+4£¬´«¸øexecute
-    output[31:0]    PC_plus_4_latch;                        //¶ÔÓÚjal/jalrËø´æµÄPC+4£¬´«¸øidecode
+    input[31:0]     Instruction_ex_mem;                     //ç”±EX/MEMæµæ°´å¯„å­˜å™¨ä¼ æ¥çš„PCå€¼
+    output[31:0]    PC_plus_4;                              //ä¸€èˆ¬æ„ä¹‰ä¸Šçš„PC+4ï¼Œä¼ ç»™execute
+    output[31:0]    PC_plus_4_latch;                        //å¯¹äºjal/jalré”å­˜çš„PC+4ï¼Œä¼ ç»™idecode
     
     input   clock;
     input   reset;
     input   Jr,Jalr,Jmp,Jal;
     input   Beq,Bne,Bgez,Bgtz,Blez,Bltz,Bgezal,Bltzal;
-    input   Zero;                                           //executeµ¥Ôª¼ÆËã³öµÄÏà¼õZero±êÖ¾
-    input   Positive;                                       //executeµ¥ÔªÅĞ¶Ï³öµÄrsÊÇ·ñÎªÕı±êÖ¾
-    input   Negative;                                       //executeµ¥ÔªÅĞ¶Ï³öµÄrsÊÇ·ñÎª¸º±êÖ¾
-    input[31:0] PC_add_result;                              //executeµ¥Ôª¼ÆËã³öµÄPC+4+offset<<2
-    input[31:0] Read_data_rs;                               //idecodeµ¥ÔªÈ¡³öµÄ(rs)
+    input   Zero;                                           //executeå•å…ƒè®¡ç®—å‡ºçš„ç›¸å‡Zeroæ ‡å¿—
+    input   Positive;                                       //executeå•å…ƒåˆ¤æ–­å‡ºçš„rsæ˜¯å¦ä¸ºæ­£æ ‡å¿—
+    input   Negative;                                       //executeå•å…ƒåˆ¤æ–­å‡ºçš„rsæ˜¯å¦ä¸ºè´Ÿæ ‡å¿—
+    input[31:0] PC_add_result;                              //executeå•å…ƒè®¡ç®—å‡ºçš„PC+4+offset<<2
+    input[31:0] Read_data_rs;                               //idecodeå•å…ƒå–å‡ºçš„(rs)
     
-    //RAMROMÒı½Å
-    output[13:0]    Rom_adr_o;                              //¸øÖ¸Áî´æ´¢Æ÷µ¥ÔªµÄÈ¡ÖµµØÖ·
-    input[31:0] Jpadr;                                      //Ö¸Áî´æ´¢Æ÷ÖĞÈ¡³öµÄÖ¸Áî
+    //RAMROMå¼•è„š
+    output[13:0]    Rom_adr_o;                              //ç»™æŒ‡ä»¤å­˜å‚¨å™¨å•å…ƒçš„å–å€¼åœ°å€
+    input[31:0] Jpadr;                                      //æŒ‡ä»¤å­˜å‚¨å™¨ä¸­å–å‡ºçš„æŒ‡ä»¤
     
-    input[31:0] PC_exception;                               //Ó²±àÂëµÄÖĞ¶Ï´¦Àí³ÌĞòÈë¿ÚµØÖ·/EPC
+    input[31:0] PC_exception;                               //ç¡¬ç¼–ç çš„ä¸­æ–­å¤„ç†ç¨‹åºå…¥å£åœ°å€/EPC
     
+    input   Nonflush_ex_mem;
     input[31:0] PC_plus_4_id_ex;
     output  flush_pipeline;
     
     wire[31:0]  Instruction;
     
     reg[31:0]   PC;
+    reg[31:0]   jump_PC;                                    //åªè€ƒè™‘è·³è½¬çš„æƒ…å†µï¼Œå¦åˆ™ä¸º32'hFFFFFFFF
     reg[31:0]   next_PC;
     reg[31:0]   PC_plus_4_latch;
     
     reg         flush_pipeline;
     
-/*  Ô­±¾µÄÖ¸ÁîROM
+/*  åŸæœ¬çš„æŒ‡ä»¤ROM
     //64KB ROM
     inst_mem inst_mem(
         .clka(clock),
         .addra(PC[15:2]),
-        .douta(Instruction)                                 //Ö¸ÁîÔÚÕâÀï±»È¡³ö
+        .douta(Instruction)                                 //æŒ‡ä»¤åœ¨è¿™é‡Œè¢«å–å‡º
     );
 */
     
@@ -67,39 +69,41 @@ module Ifetch(
     
     assign PC_plus_4 = {PC[31:2] + 1'b1,2'b00};
     
-    //next_PCÊÇÓÒÒÆ2Î»ºóµÄPC£¬´Ó¶ø±£Ö¤Ç¿ÖÆ¶ÔÆë
-    always @(*)
+    //next_PCæ˜¯å³ç§»2ä½åçš„PCï¼Œä»è€Œä¿è¯å¼ºåˆ¶å¯¹é½
+    always @(posedge clock)
     begin
-        next_PC = (Beq && Zero) || (Bne && !Zero) ||
+        jump_PC = (Beq && Zero) || (Bne && !Zero) ||
                   (Bgez && !Negative) || (Bgtz && Positive) ||
                   (Blez && !Positive) || (Bltz && Negative) ||
                   (Bgezal && !Negative) || (Bltzal && Negative)
                   ? PC_add_result
                   : (
-                        Jr || Jalr
-                        ? Read_data_rs >> 2
+                        Jmp || Jal
+                        ? Instruction_ex_mem & 32'h03FFFFFF
                         : (
-                              PC_exception == 32'hFFFFFFFF
-                              ? PC_plus_4 >> 2
-                              : PC_exception >> 2
+                              Jr || Jalr
+                              ? Read_data_rs >> 2
+                              : (
+                                    PC_exception == 32'hFFFFFFFF
+                                    ? 32'hFFFFFFFF
+                                    : PC_exception >> 2
+                                )
                           )
                     );
+        next_PC = (jump_PC == 32'hFFFFFFFF) ? PC_plus_4 >> 2 : jump_PC;
+        flush_pipeline = (
+                             jump_PC != 32'hFFFFFFFF ||
+                             (Nonflush_ex_mem && (next_PC << 2) != PC_plus_4_id_ex + 8)
+                         )
+                         ? 1'b1 : 1'b0;
     end
     
-    //ĞŞ¸ÄPC
+    //ä¿®æ”¹PC
     always @(negedge clock)
     begin
         if (Jal || Jalr)
-            PC_plus_4_latch = PC_plus_4;                    //ĞèÒªÔÚ¸Ä±äPCÇ°Ëø´æ×¡Ö®Ç°µÄPC+4
-        
-        PC = reset
-             ? 32'h00000000
-             : (Jmp || Jal)
-               ? (Instruction_latch & 32'h03FFFFFF) << 2
-               : next_PC << 2;
-        
-        flush_pipeline = (Instruction_latch != 32'h00000000 && PC != PC_plus_4_id_ex + 8)
-                         ? 1'b1 : 1'b0;
+            PC_plus_4_latch = PC_plus_4;                    //éœ€è¦åœ¨æ”¹å˜PCå‰é”å­˜ä½ä¹‹å‰çš„PC+4
+        PC = reset ? 32'h00000000 : next_PC << 2;
     end
     
 endmodule

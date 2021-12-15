@@ -2,11 +2,13 @@
 
 ![avatar](https://gravatar.loli.net/avatar/21045a9dba2e8c4b064b00dab8254be0?d=mm&s=256)
 
+综合课程设计中，我个人做的部分的存档
+
 
 
 # 概述
 
-CPU:
+**CPU:**
 
 采用五级流水：IF, ID, EX, MEM, WB，其中规定所有PC值修改在MEM阶段，所有寄存器组修改在WB阶段
 
@@ -14,7 +16,7 @@ CPU:
 
 数据冒险采用转发法，阻塞需要通过软件辅助实现；分支默认顺序执行
 
-汇编器:
+**汇编器:**
 
 负责词法语法分析，主要使用Python ply包提供的lex / yacc工具
 
@@ -30,22 +32,22 @@ CPU:
 
 2021.11.04 加强了汇编器的功能，基本完成与链接器、汇编翻译器的衔接
 
-2021.12.16 根据综合应用检查硬件，找到几个锅，对于这些问题准备专门说明一下
+2021.12.16 根据综合应用检查硬件，找到几个锅，对于这些问题准备专门说明一下，详见"Discussion about Pipeline Register.md"
 
 
 # 参考材料
 
-CPU:
+**CPU:**
 
 [MOOC:东南大学-计算机系统综合设计](https://www.icourse163.org/course/SEU-1003566002)
 
 计算机组成与设计:硬件/软件接口, David A. Patterson, John L. Hennessy
 
-接口：
+**接口：**
 
 计算机系统综合课程设计, 杨全胜 （只能参考框架，书中代码的细节问题很多）
 
-汇编器:
+**汇编器:**
 
 [Python PLY official documentation](http://www.dabeaz.com/ply/ply.html)
 

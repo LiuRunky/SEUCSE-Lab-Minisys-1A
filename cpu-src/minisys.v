@@ -1,36 +1,36 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Company: ¶«ÄÏ´óÑ§
-// Engineer: ÁõÀÊ÷è
-// Notes:   1. 
+// Company: ä¸œå—å¤§å­¦
+// Engineer: åˆ˜æœ—éº’
 //////////////////////////////////////////////////////////////////////////////////
 
 module minisys(
     fpga_rst,fpga_clk,
     start_pg,rx,tx,
-    LED2N4
+    LED2N4,Switch2N4,KeyRow0N4,KeyColumn0N4,DisplayEnable0N8,DisplayValue0N8,
+    Buzzer0N1
     );
 
-    input       fpga_rst;                                           //°åÉÏµÄresetĞÅºÅ£¬¸ßµçÆ½¸´Î»
-    input       fpga_clk;                                           //°åÉÏµÄ100MHzÊ±ÖÓĞÅºÅ
+    input       fpga_rst;                                           //æ¿ä¸Šçš„resetä¿¡å·ï¼Œé«˜ç”µå¹³å¤ä½
+    input       fpga_clk;                                           //æ¿ä¸Šçš„100MHzæ—¶é’Ÿä¿¡å·
     
-    wire        clock;                                             //CPUÖ÷Ê±ÖÓ
-    wire        reset;                                             //resetĞèÒªÍ¬Ê±¿¼ÂÇfpga_setÓëÏÂÔØµÄreset
-    wire        flush_pipeline;                                    //Çå¿ÕÁ÷Ë®¼Ä´æÆ÷
+    wire        clock;                                             //CPUä¸»æ—¶é’Ÿ
+    wire        reset;                                             //resetéœ€è¦åŒæ—¶è€ƒè™‘fpga_setä¸ä¸‹è½½çš„reset
+    wire        flush_pipeline;                                    //æ¸…ç©ºæµæ°´å¯„å­˜å™¨
     
     
 
-    //UART±à³ÌÆ÷Òı½Å
-    input       start_pg;                                           //½ÓÏß°åÉÏS3°´¼üÎªÏÂÔØÆô¶¯¼ü
-    input       rx;                                                 //UART½ÓÊÕ
-    output      tx;                                                 //UART·¢ËÍ
+    //UARTç¼–ç¨‹å™¨å¼•è„š
+    input       start_pg;                                           //æ¥çº¿æ¿ä¸ŠS3æŒ‰é”®ä¸ºä¸‹è½½å¯åŠ¨é”®
+    input       rx;                                                 //UARTæ¥æ”¶
+    output      tx;                                                 //UARTå‘é€
     
     wire       upg_clk,upg_clk_o,upg_wen_o,upg_done_o;
     wire[14:0] upg_adr_o;
     wire[31:0] upg_dat_o;
     
     wire       spg_bufg;
-    BUFG U1(                                                        //S3°´¼üÈ¥¶¶
+    BUFG U1(                                                        //S3æŒ‰é”®å»æŠ–
         .I(start_pg),
         .O(spg_bufg)
     );
@@ -47,7 +47,7 @@ module minisys(
                                                                     
     uart_bmpg_0 uartpg(
         .upg_clk_i(upg_clk),                                        //10MHz
-        .upg_rst_i(upg_rst),                                        //¸ßµçÆ½ÓĞĞ§
+        .upg_rst_i(upg_rst),                                        //é«˜ç”µå¹³æœ‰æ•ˆ
         
         .upg_clk_o(upg_clk_o),
         .upg_wen_o(upg_wen_o),
@@ -61,23 +61,23 @@ module minisys(
     
     
     
-    //ÆäÓàCPUÄ£¿éµ¥Ôª
+    //å…¶ä½™CPUæ¨¡å—å•å…ƒ
     wire[1:0]   alu_op;
     wire        alu_src;
-    wire[31:0]  alu_result;                                        //ALUÔËËã½á¹û
-    wire[31:0]  pc_add_result;                                     //PC+4+offset<<2ÔËËã½á¹û
-    wire        zero;                                              //Zero±êÖ¾£¬Ö´ĞĞµ¥Ôª²úÉú
-    wire        positive;                                          //rsÎªÕı£¬Ö´ĞĞµ¥Ôª²úÉú
-    wire        negative;                                          //rsÎª¸º£¬Ö´ĞĞµ¥Ôª²úÉú
-    wire        overflow;                                          //Overflow±êÖ¾£¬Ö´ĞĞµ¥Ôª²úÉú£¨ÓĞ·ûºÅÊı¼Ó¼õ£©
-    wire        divide_zero;                                       //Divide 0±êÖ¾£¬Ö´ĞĞµ¥Ôª²úÉú£¨³ı·¨£©
+    wire[31:0]  alu_result;                                        //ALUè¿ç®—ç»“æœ
+    wire[31:0]  pc_add_result;                                     //PC+4+offset<<2è¿ç®—ç»“æœ
+    wire        zero;                                              //Zeroæ ‡å¿—ï¼Œæ‰§è¡Œå•å…ƒäº§ç”Ÿ
+    wire        positive;                                          //rsä¸ºæ­£ï¼Œæ‰§è¡Œå•å…ƒäº§ç”Ÿ
+    wire        negative;                                          //rsä¸ºè´Ÿï¼Œæ‰§è¡Œå•å…ƒäº§ç”Ÿ
+    wire        overflow;                                          //Overflowæ ‡å¿—ï¼Œæ‰§è¡Œå•å…ƒäº§ç”Ÿï¼ˆæœ‰ç¬¦å·æ•°åŠ å‡ï¼‰
+    wire        divide_zero;                                       //Divide 0æ ‡å¿—ï¼Œæ‰§è¡Œå•å…ƒäº§ç”Ÿï¼ˆé™¤æ³•ï¼‰
     
     wire[31:0]  pc_plus_4;                                         //PC+4
-    wire[31:0]  pc_plus_4_latch;                                   //¶ÔÓÚjal/jalrËø´æµÄPC+4£¬´«¸øidecode
+    wire[31:0]  pc_plus_4_latch;                                   //å¯¹äºjal/jalré”å­˜çš„PC+4ï¼Œä¼ ç»™idecode
     
-    wire[31:0]  read_data_1;                                       //´Ó¼Ä´æÆ÷¶Á³öµÄ(rs)
-    wire[31:0]  read_data_2;                                       //´Ó¼Ä´æÆ÷¶Á³öµÄ(rt)
-    wire[31:0]  immediate_extend;                                  //Á¢¼´Êı·ûºÅÀ©Õ¹
+    wire[31:0]  read_data_1;                                       //ä»å¯„å­˜å™¨è¯»å‡ºçš„(rs)
+    wire[31:0]  read_data_2;                                       //ä»å¯„å­˜å™¨è¯»å‡ºçš„(rt)
+    wire[31:0]  immediate_extend;                                  //ç«‹å³æ•°ç¬¦å·æ‰©å±•
     
     wire[31:0]  instruction;
     wire[5:0]   opcode;
@@ -95,36 +95,50 @@ module minisys(
     wire        shift;
     wire        reserved_instruction;
     
-    wire        memory_sign;                                       //´ÓDATA RAM¶Á³öµÄÊı¾İ½øĞĞÁã/·ûºÅÀ©Õ¹
-    wire[1:0]   memory_data_width;                                 //´ÓDATA RAM¶ÁĞ´µÄÁ£¶È(00/01/11)
-    wire[31:0]  data_from_memio;                                   //´ÓMEM/IOÑ¡Ôñµ¥ÔªÈ¡³öµÄÊı¾İ
-    wire[31:0]  memory_read_data;                                  //´ÓDATA RAM¶Á³öµÄÊı¾İ
-    wire[15:0]  io_read_data;                                      //´ÓIO¶Á³öµÄÊı¾İ
-    wire[31:0]  write_data_latch;                                  //ÓÉMEM/IOÑ¡Ôñµ¥ÔªËø´æµÄ´ıĞ´Êı¾İ
+    wire        memory_sign;                                       //ä»DATA RAMè¯»å‡ºçš„æ•°æ®è¿›è¡Œé›¶/ç¬¦å·æ‰©å±•
+    wire[1:0]   memory_data_width;                                 //ä»DATA RAMè¯»å†™çš„ç²’åº¦(00/01/11)
+    wire[31:0]  data_from_memio;                                   //ä»MEM/IOé€‰æ‹©å•å…ƒå–å‡ºçš„æ•°æ®
+    wire[31:0]  memory_read_data;                                  //ä»DATA RAMè¯»å‡ºçš„æ•°æ®
+    wire[15:0]  io_read_data;                                      //ä»IOè¯»å‡ºçš„æ•°æ®
+    wire[31:0]  write_data_latch;                                  //ç”±MEM/IOé€‰æ‹©å•å…ƒé”å­˜çš„å¾…å†™æ•°æ®
     
-    wire[13:0]  rom_adr;                                           //Ö¸Áî¼Ä´æÆ÷µÄÈ¡Ö·µØÖ·
-    wire[31:0]  rom_dat;                                           //Ö¸Áî¼Ä´æÆ÷È¡³öµÄÊı¾İ
+    wire[13:0]  rom_adr;                                           //æŒ‡ä»¤å¯„å­˜å™¨çš„å–å€åœ°å€
+    wire[31:0]  rom_dat;                                           //æŒ‡ä»¤å¯„å­˜å™¨å–å‡ºçš„æ•°æ®
     
+    wire        display_ctrl;
+    wire        key_ctrl;
+    wire[15:0]  io_read_data_key;
+    wire        ctc_ctrl;
+    wire        ctc0_output,ctc1_output;
+    wire[15:0]  io_read_data_ctc;
+    wire        pwm_ctrl;
+    wire        pwm_output;
+    wire        buzzer_ctrl;
+    wire        wdt_ctrl;
+    wire        wdt_output;
     wire        led_ctrl;
+    wire        switch_ctrl;
+    wire[15:0]  io_read_data_switch;
     
     wire        cause_write,status_write,epc_write;
     wire[31:0]  cause_write_data,status_write_data,epc_write_data;
     wire[31:0]  cause_read_data,status_read_data,epc_read_data;
     
-    wire[31:0]  cp0_data;                                          //CP0¼Ä´æÆ÷ÖĞÈ¡³öµÄÊı¾İ
-    wire[31:0]  pc_exception;                                      //ÖĞ¶Ï´¦Àí³ÌĞòÈë¿ÚµØÖ·/EPC
+    wire[31:0]  cp0_data;                                          //CP0å¯„å­˜å™¨ä¸­å–å‡ºçš„æ•°æ®
+    wire[31:0]  pc_exception;                                      //ä¸­æ–­å¤„ç†ç¨‹åºå…¥å£åœ°å€/EPC
     
-    wire[31:0]  forwarded_data_1,forwarded_data_2;                 //¿¼ÂÇÊı¾İ×ª·¢ºóµÄread_data
+    wire[31:0]  forwarded_data_1,forwarded_data_2;                 //è€ƒè™‘æ•°æ®è½¬å‘åçš„read_data
     
     
     cpuclk cpuclk(
         .clk_in1(fpga_clk),                                         //100MHz
-        .clk_out1(clock),                                           //CPUÊ±ÖÓ(23MHz)
-        .clk_out2(upg_clk)                                          //´®¿ÚÏÂÔØÊ±ÖÓ(10MHz)
+        .clk_out1(clock),                                           //CPUæ—¶é’Ÿ(23MHz)
+        .clk_out2(upg_clk)                                          //ä¸²å£ä¸‹è½½æ—¶é’Ÿ(10MHz)
     );
     
     
     
+    //æµæ°´å¯„å­˜å™¨ç›¸å…³è¿çº¿
     wire[31:0]  if_id_pc_plus_4;
     wire[31:0]  if_id_pc_plus_4_latch;
     wire[31:0]  if_id_instruction;
@@ -142,6 +156,7 @@ module minisys(
     wire        if_id_memory_sign;
     wire[1:0]   if_id_memory_data_width;
     wire        if_id_l_type,if_id_s_type;
+    wire        if_id_nonflush;
     
     wire[31:0]  id_ex_pc_plus_4;
     wire[31:0]  id_ex_pc_plus_4_latch;
@@ -164,6 +179,7 @@ module minisys(
     wire        id_ex_memory_sign;
     wire[1:0]   id_ex_memory_data_width;
     wire        id_ex_l_type,id_ex_s_type;
+    wire        id_ex_nonflush;
 
     wire[31:0]  ex_mem_pc_add_result;
     wire[31:0]  ex_mem_pc_plus_4_latch;
@@ -183,6 +199,7 @@ module minisys(
                  ex_mem_io_read,ex_mem_io_write;
     wire        ex_mem_memory_sign;
     wire[1:0]   ex_mem_memory_data_width;
+    wire        ex_mem_nonflush;
     
     wire[31:0]  mem_wb_pc_plus_4_latch;
     wire[31:0]  mem_wb_cp0_data;
@@ -197,12 +214,14 @@ module minisys(
     
     
     
+    //åˆ«çœ‹äº†ï¼Œä¸‹é¢éƒ½æ˜¯æ— èŠçš„è¿çº¿
     Ifetch ifetch(
         .Instruction(instruction),
-        .Instruction_latch(ex_mem_instruction),
+        .Instruction_ex_mem(ex_mem_instruction),
         .PC_plus_4(pc_plus_4),
         .PC_plus_4_latch(pc_plus_4_latch),
         .PC_plus_4_id_ex(id_ex_pc_plus_4),
+        .Nonflush_ex_mem(ex_mem_nonflush),
         
         .clock(clock),
         .reset(reset),
@@ -293,7 +312,7 @@ module minisys(
                  
     IF_ID if_id(
         .clock(clock),
-        .reset(reset),
+        .reset(reset | flush_pipeline),
         
         .PC_plus_4_in(pc_plus_4),
         .PC_plus_4_latch_in(pc_plus_4_latch),
@@ -367,7 +386,8 @@ module minisys(
         .Memory_sign_out(if_id_memory_sign),
         .Memory_data_width_out(if_id_memory_data_width),
         .L_type_out(if_id_l_type),
-        .S_type_out(if_id_s_type)
+        .S_type_out(if_id_s_type),
+        .Nonflush_out(if_id_nonflush)
     );
     
 
@@ -482,6 +502,7 @@ module minisys(
         .Memory_data_width_in(if_id_memory_data_width),
         .L_type_in(if_id_l_type),
         .S_type_in(if_id_s_type),
+        .Nonflush_in(if_id_nonflush),
         
         .PC_plus_4_out(id_ex_pc_plus_4),
         .PC_plus_4_latch_out(id_ex_pc_plus_4_latch),
@@ -517,7 +538,8 @@ module minisys(
         .Memory_sign_out(id_ex_memory_sign),
         .Memory_data_width_out(id_ex_memory_data_width),
         .L_type_out(id_ex_l_type),
-        .S_type_out(id_ex_s_type)
+        .S_type_out(id_ex_s_type),
+        .Nonflush_out(id_ex_nonflush)
     );
     
     
@@ -607,6 +629,7 @@ module minisys(
         .IO_write_in(io_write),
         .Memory_sign_in(id_ex_memory_sign),
         .Memory_data_width_in(id_ex_memory_data_width),
+        .Nonflush_in(id_ex_nonflush),
         
         .PC_add_result_out(ex_mem_pc_add_result),
         .PC_plus_4_latch_out(ex_mem_pc_plus_4_latch),
@@ -639,7 +662,8 @@ module minisys(
         .IO_read_out(ex_mem_io_read),
         .IO_write_out(ex_mem_io_write),
         .Memory_sign_out(ex_mem_memory_sign),
-        .Memory_data_width_out(ex_mem_memory_data_width)
+        .Memory_data_width_out(ex_mem_memory_data_width),
+        .Nonflush_out(ex_mem_nonflush)
     );
     
     
@@ -655,25 +679,49 @@ module minisys(
         .Memory_read_data(memory_read_data),
         .IO_read_data(io_read_data),
         .Write_data_in(ex_mem_memory_or_io_write_data),
-        .Read_data(data_from_memio),                                //´ÓMEM/IO¶Á³öµÄÊı¾İ
+        .Read_data(data_from_memio),                                //ä»MEM/IOè¯»å‡ºçš„æ•°æ®
         .Write_data_latch(write_data_latch),
         
-        .Disp_ctrl(),
-        .Key_ctrl(),
-        .CTC_ctrl(),
-        .PWM_ctrl(),
-        .UART_ctrl(),
-        .WDT_ctrl(),
+        .Display_ctrl(display_ctrl),
+        .Key_ctrl(key_ctrl),
+        .CTC_ctrl(ctc_ctrl),
+        .PWM_ctrl(pwm_ctrl),
+        .Buzzer_ctrl(buzzer_ctrl),
+        .WDT_ctrl(wdt_ctrl),
         .LED_ctrl(led_ctrl),
-        .Switch_ctrl()
+        .Switch_ctrl(switch_ctrl)
+    );
+    
+    MultiIORead multiioread(
+        .clock(clock),
+        .reset(reset),
+        
+        .IO_read(ex_mem_io_read),
+        .IO_read_data(io_read_data),
+        
+        .Key_ctrl(key_ctrl),
+        .IO_read_data_key(io_read_data_key),
+        
+        .Switch_ctrl(switch_ctrl),
+        .IO_read_data_switch(io_read_data_switch),
+        
+        .CTC_ctrl(ctc_ctrl),
+        .IO_read_data_ctc(io_read_data_ctc)
     );
     
     DataMEM datamem(
         .clock(clock),
         .Memory_write(memory_write),
-        .Address(alu_result),           //
+        .Address(ex_mem_alu_result),
         .Read_data(memory_read_data),
-        .Write_data(write_data_latch)
+        .Write_data(write_data_latch),
+        
+        .Upg_rst_i(upg_rst),
+        .Upg_clk_i(upg_clk_o),
+        .Upg_wen_i(upg_wen_o & upg_adr_o[14]),
+        .Upg_adr_i(upg_adr_o[13:0]),
+        .Upg_dat_i(upg_dat_o),
+        .Upg_done_i(upg_done_o)
     );
     
     output[23:0]    LED2N4;
@@ -682,12 +730,93 @@ module minisys(
         .reset(reset),
         .Write_enable(led_ctrl),
         .Select(1'b1),
-        .Address(alu_result[1:0]),      //
+        .Address(ex_mem_alu_result[1:0]),
         .Write_data_in(write_data_latch[15:0]),
         .Write_data_out(LED2N4)
     );
     
+    input[23:0]     Switch2N4;
+    Switch switch(
+        .clock(clock),
+        .reset(reset),
+        .Read_enable(switch_ctrl),
+        .Select(1'b1),
+        .Address(ex_mem_alu_result[1:0]),
+        .Read_data_in(Switch2N4),
+        .Read_data_out(io_read_data_switch)
+    );
     
+    output[3:0]     KeyRow0N4;
+    input[3:0]      KeyColumn0N4;
+    Key key(
+        .clock(clock),
+        .reset(reset),
+        .Read_enable(key_ctrl),
+        .Select(1'b1),
+        .Address(ex_mem_alu_result[1:0]),
+        .Row(KeyRow0N4),
+        .Column(KeyColumn0N4),
+        .Read_data_out(io_read_data_key)
+    );
+    
+    output[7:0]     DisplayEnable0N8;
+    output[7:0]     DisplayValue0N8;
+    Display display(
+        .clock(clock),
+        .reset(reset),
+        .Write_enable(display_ctrl),
+        .Select(1'b1),
+        .Address(ex_mem_alu_result[2:0]),
+        .Write_data_in(write_data_latch[15:0]),
+        .Enable(DisplayEnable0N8),
+        .Value(DisplayValue0N8)
+    );
+    
+    PWM pwm(
+        .clock(clock),
+        .reset(reset),
+        .Write_enable(pwm_ctrl),
+        .Select(1'b1),
+        .Address(ex_mem_alu_result[2:0]),
+        .Write_data_in(write_data_latch[15:0]),
+        .PWM_output(pwm_output)
+    );
+    
+    CTC ctc(
+        .clock(clock),
+        .reset(reset),
+        .Read_enable(ex_mem_io_read & ctc_ctrl),
+        .Write_enable(ex_mem_io_write & ctc_ctrl),
+        .Select(1'b1),
+        .Address(ex_mem_alu_result[2:0]),
+        .Write_data_in(write_data_latch[15:0]),
+        .Read_data_out(io_read_data_ctc),
+        .CTC0_output(ctc0_output),
+        .CTC1_output(ctc1_output),
+        
+        .Pulse0_in(),
+        .Pulse1_in()
+    );
+    
+    WDT wdt(
+        .clock(clock),
+        .reset(reset),
+        .Write_enable(wdt_ctrl),
+        .Select(1'b1),
+        .Write_data_in(write_data_latch[15:0]),
+        .WDT_output(wdt_output)
+    );
+    
+    output      Buzzer0N1;
+    Buzzer buzzer(
+        .clock(clock),
+        .reset(reset),
+        .Write_enable(buzzer_ctrl),
+        .Select(1'b1),
+        .Address(ex_mem_alu_result[1:0]),
+        .Write_data_in(write_data_latch[15:0]),
+        .Buzzer_output(Buzzer0N1)
+    );
     
     MEM_WB mem_wb(
         .clock(clock),
@@ -696,7 +825,7 @@ module minisys(
         .PC_plus_4_latch_in(ex_mem_pc_plus_4_latch),
         .CP0_data_in(ex_mem_cp0_data),
         .ALU_result_in(ex_mem_alu_result),
-        .Memory_or_IO_read_data_in(memory_read_data),
+        .Memory_or_IO_read_data_in(data_from_memio),
         .Jal_in(ex_mem_jal),
         .Jalr_in(ex_mem_jalr),
         .Bgezal_in(ex_mem_bgezal),

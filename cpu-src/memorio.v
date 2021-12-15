@@ -1,8 +1,8 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Module: Êı¾İÑ¡Ôñµ¥Ôª
-// Function:    1. ´Ó¸÷¸ö½Ó¿ÚÖĞ¶Á/Ğ´Êı¾İ
-//              2. ²úÉú½Ó¿ÚµÄÆ¬Ñ¡ĞÅºÅ
+// Module: æ•°æ®é€‰æ‹©å•å…ƒ
+// Function:    1. ä»å„ä¸ªæ¥å£ä¸­è¯»/å†™æ•°æ®
+//              2. äº§ç”Ÿæ¥å£çš„ç‰‡é€‰ä¿¡å·
 //////////////////////////////////////////////////////////////////////////////////
 
 
@@ -11,51 +11,51 @@ module MEMorIO(
     Memory_read_data,IO_read_data,Write_data_in,
     Memory_sign,Memory_data_width,
     Read_data,Write_data_latch,
-    Disp_ctrl,Key_ctrl,CTC_ctrl,PWM_ctrl,UART_ctrl,WDT_ctrl,LED_ctrl,Switch_ctrl
+    Display_ctrl,Key_ctrl,CTC_ctrl,PWM_ctrl,Buzzer_ctrl,WDT_ctrl,LED_ctrl,Switch_ctrl
     );
     
     input[31:0] Address;
-    input       Memory_read,Memory_write,IO_read,IO_write;  //´ÓcontrolÀ´µÄ¿ØÖÆĞÅºÅ
+    input       Memory_read,Memory_write,IO_read,IO_write;  //ä»controlæ¥çš„æ§åˆ¶ä¿¡å·
     input       Memory_sign;
     input[1:0]  Memory_data_width;
     
-    input[31:0] Memory_read_data;                       //´ÓMEMÖĞ¶Á³öµÄÊı¾İ
-    input[15:0] IO_read_data;                           //´ÓIOÖĞ¶Á³öµÄÊı¾İ
-    input[31:0] Write_data_in;                          //´«ÈëÑ¡Ôñµ¥Ôª¡¢ÒªĞ´µ½MEM/IOÖĞµÄÊı¾İ
+    input[31:0] Memory_read_data;                       //ä»MEMä¸­è¯»å‡ºçš„æ•°æ®
+    input[15:0] IO_read_data;                           //ä»IOä¸­è¯»å‡ºçš„æ•°æ®
+    input[31:0] Write_data_in;                          //ä¼ å…¥é€‰æ‹©å•å…ƒã€è¦å†™åˆ°MEM/IOä¸­çš„æ•°æ®
     
-    output[31:0]    Read_data;                          //´ÓMEM/IOÖĞ¶ÁÈ¡µÄÊı¾İ
-    output[31:0]    Write_data_latch;                   //´«³öÑ¡Ôñµ¥Ôª¡¢ÒªĞ´µ½MEM/IOÖĞµÄÊı¾İ
-    output          Disp_ctrl;                          //8Î»7¶ÎÊıÂë¹Ü
-    output          Key_ctrl;                           //4x4¼üÅÌ
-    output          CTC_ctrl;                           //¶¨Ê±Æ÷or¼ÆÊ±Æ÷
-    output          PWM_ctrl;                           //PWMÂö³å¿í¶Èµ÷ÖÆ
-    output          UART_ctrl;                          //´®¿Ú
-    output          WDT_ctrl;                           //¿´ÃÅ¹·¼ÆÊıÆ÷
-    output          LED_ctrl;                           //3x8ÑÕÉ«ÎªRYGµÄLED
-    output          Switch_ctrl;                        //24¸ö²¦Âë¿ª¹Ø
+    output[31:0]    Read_data;                          //ä»MEM/IOä¸­è¯»å–çš„æ•°æ®
+    output[31:0]    Write_data_latch;                   //ä¼ å‡ºé€‰æ‹©å•å…ƒã€è¦å†™åˆ°MEM/IOä¸­çš„æ•°æ®
+    output          Display_ctrl;                       //8ä½7æ®µæ•°ç ç®¡
+    output          Key_ctrl;                           //4x4é”®ç›˜
+    output          CTC_ctrl;                           //å®šæ—¶å™¨orè®¡æ—¶å™¨
+    output          PWM_ctrl;                           //PWMè„‰å†²å®½åº¦è°ƒåˆ¶
+    output          Buzzer_ctrl;                        //èœ‚é¸£å™¨
+    output          WDT_ctrl;                           //çœ‹é—¨ç‹—è®¡æ•°å™¨
+    output          LED_ctrl;                           //3x8é¢œè‰²ä¸ºRYGçš„LED
+    output          Switch_ctrl;                        //24ä¸ªæ‹¨ç å¼€å…³
         
-    reg[31:0]   Write_data_latch;                      //Ëø´æÒªĞ´ÈëMEM/IOµÄÊı¾İ
+    reg[31:0]   Write_data_latch;                      //é”å­˜è¦å†™å…¥MEM/IOçš„æ•°æ®
     
-    wire    io_sel;                                    //ÊÇ·ñÎªIO²Ù×÷
+    wire    io_sel;                                    //æ˜¯å¦ä¸ºIOæ“ä½œ
     
     
     //io_sel
     assign io_sel = (IO_read || IO_write);
     
-    //Èô¶ÁÈ¡µÄÊı¾İÀ´×ÔIO£¬Ôò½øĞĞÁãÀ©Õ¹
+    //è‹¥è¯»å–çš„æ•°æ®æ¥è‡ªIOï¼Œåˆ™è¿›è¡Œé›¶æ‰©å±•
     assign Read_data = Memory_read ? Memory_read_data : {16'h0000,IO_read_data};
     
-    //½Ó¿ÚµÄµØÖ·¡¾¿ÉÄÜĞèÒª¸Ä¡¿
-    assign Disp_ctrl = (io_sel && Address == 32'hFFFFFC00) ? 1'b1 : 1'b0;
-    assign Key_ctrl = (io_sel && Address == 32'hFFFFFC10) ? 1'b1 : 1'b0;
-    assign CTC_ctrl = (io_sel && Address == 32'hFFFFFC20) ? 1'b1 : 1'b0;
-    assign PWM_ctrl = (io_sel && Address == 32'hFFFFFC30) ? 1'b1 : 1'b0;
-    assign UART_ctrl = (io_sel && Address == 32'hFFFFFC40) ? 1'b1 : 1'b0;
+    //æ¥å£çš„åœ°å€
+    assign Display_ctrl = (io_sel && Address[31:3] == 29'h1FFFFF80) ? 1'b1 : 1'b0;
+    assign Key_ctrl = (io_sel && Address[31:2] == 30'h3FFFFF04) ? 1'b1 : 1'b0;
+    assign CTC_ctrl = (io_sel && Address[31:3] == 29'h1FFFFF84) ? 1'b1 : 1'b0;
+    assign PWM_ctrl = (io_sel && Address[31:3] == 29'h1FFFFF86) ? 1'b1 : 1'b0;
+    assign Buzzer_ctrl = (io_sel && Address[31:2] == 30'h3FFFFF10) ? 1'b1 : 1'b0;
     assign WDT_ctrl = (io_sel && Address == 32'hFFFFFC50) ? 1'b1 : 1'b0;
-    assign LED_ctrl = (io_sel && Address == 32'hFFFFFC60) ? 1'b1 : 1'b0;
-    assign Switch_ctrl = (io_sel && Address == 32'hFFFFFC70) ? 1'b1 : 1'b0;
+    assign LED_ctrl = (io_sel && Address[31:2] == 30'h3FFFFF18) ? 1'b1 : 1'b0;
+    assign Switch_ctrl = (io_sel && Address[31:2] == 30'h3FFFFF1C) ? 1'b1 : 1'b0;
     
-    //ÉèÖÃWrite_data_latch
+    //è®¾ç½®Write_data_latch
     always @(*)
     begin
         Write_data_latch = (Memory_write || IO_write) ? Write_data_in : 32'hZZZZZZZZ;

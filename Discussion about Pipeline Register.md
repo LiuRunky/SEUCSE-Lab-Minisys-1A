@@ -4,11 +4,11 @@
 
 对于简单的两个模块，如果在初始时第一个模块值为 value，第二个模块值为 undefined。
 
-[simple_before]
+![simple_before](https://github.com/LiuRunky/SEUCSE-Lab-Minisys-1A/blob/main/img/simple_before.png)
 
 如果在其中添加流水寄存器，我们希望在一个时钟之后，第一个模块的值为 value'，流水寄存器与第二个模块的值为 value。
 
-[simple_after]
+![simple_after](https://github.com/LiuRunky/SEUCSE-Lab-Minisys-1A/blob/main/img/simple_after.png)
 
 这在 Vivado 中是很容易实现的。假如 sensitivity list 为时钟的 posedge 或 negedge（我选择了 negedge），那么在触发的时刻，可以认为所有寄存器的值是不变的，于是流水寄存器可以在第一个模块的值变为 value' 之前获得其原本的值 value。
 
@@ -18,13 +18,13 @@
 
 考虑 negedge 前的时刻，流水寄存器的情况如下：
 
-[CPU_before]
+![CPU_before](https://github.com/LiuRunky/SEUCSE-Lab-Minisys-1A/blob/main/img/CPU_before.png)
 
 此时需要根据 EX/MEM 流水寄存器中的结果（比如 beq/j 等指令）来推断是否需要清空流水，所以我们认为 EX/MEM 及之后所有部分的 PC 值是正确的，即流水线中 PC-12 及之前的 PC 都是正确的。
 
 假设根据 EX/MEM 重新计算后的 PC 为 PC'，那么在一个 negedge 后，流水寄存器的情况如下：
 
-[CPU_after]
+![CPU_after](https://github.com/LiuRunky/SEUCSE-Lab-Minisys-1A/blob/main/img/CPU_after.png)
 
 根据之前的讨论，**PC' / PC-12 是正确的，而 PC ~ PC-8 都不一定正确**，所以我们需要保证能够在下一个 negedge 之前得出清空流水线的信号 flush_pipeline，可能被清空的流水寄存器包括 **IF/ID，ID/EX 以及 EX/MEM**。
 

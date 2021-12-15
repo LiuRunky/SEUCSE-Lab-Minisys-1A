@@ -10,7 +10,7 @@
 
 ![simple_after](https://github.com/LiuRunky/SEUCSE-Lab-Minisys-1A/blob/main/img/simple_after.png)
 
-这在 Vivado 中是很容易实现的。假如 sensitivity list 为时钟的 posedge 或 negedge（我选择了 negedge），那么在触发的时刻，可以认为所有寄存器的值是不变的，于是流水寄存器可以在第一个模块的值变为 value' 之前获得其原本的值 value。
+这在 Vivado 中是很容易实现的。假如 sensitivity list 为时钟的 posedge 或 negedge（我选择了 negedge），那么在触发的时刻，可以认为所有寄存器的值是不变的，于是流水寄存器可以在第一个模块的值变为 value' 之前获得其原本的值 value。这个过程有些类似 C++ 中的 a = a + 1。
 
 在 MOOC 课件中，提到了**访存需要错开半个时钟**，也是因为类似的道理：如果在流水寄存器更新的同时访存，那么访问到的地址是流水寄存器**更新前**的地址，导致并没有完成**这一个指令周期**的指令。与之对应的是一般的运算（比如ALU的加减逻辑运算等），我们可以认为处理运算在**一个瞬间**完成，于是在**这一个指令周期**的运算结果对应的就是流水寄存器**更新后**的指令。
 

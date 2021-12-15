@@ -2,7 +2,7 @@
 
 ![avatar](https://gravatar.loli.net/avatar/21045a9dba2e8c4b064b00dab8254be0?d=mm&s=256)
 
-综合课程设计中，我个人做的部分的存档
+综合课程设计中，我个人做的部分的存档，按照基础要求进行实现
 
 
 
@@ -12,7 +12,7 @@
 
 采用五级流水：IF, ID, EX, MEM, WB，其中规定所有PC值修改在MEM阶段，所有寄存器组修改在WB阶段
 
-为了方便调试，指令寄存器programrom为1x32bit
+为了方便调试，指令寄存器programrom和数据寄存器ram均为1x32bit，近期会将ram改到4x8bit
 
 数据冒险采用转发法，阻塞需要通过软件辅助实现；分支默认顺序执行
 
@@ -32,7 +32,8 @@
 
 2021.11.04 加强了汇编器的功能，基本完成与链接器、汇编翻译器的衔接
 
-2021.12.16 根据综合应用检查硬件，找到几个锅，对于这些问题准备专门说明一下，详见"Discussion about Pipeline Register.md"
+2021.12.16 根据综合应用检查硬件，找到几个锅，对于这些问题专门说明了一下，详见"Discussion about Pipeline Register.md"
+
 
 
 # 参考材料

@@ -30,6 +30,8 @@ CPU:
 
 2021.11.04 加强了汇编器的功能，基本完成与链接器、汇编翻译器的衔接
 
+2021.12.16 根据综合应用检查硬件，找到几个锅，对于这些问题准备专门说明一下
+
 
 # 参考材料
 
@@ -39,9 +41,15 @@ CPU:
 
 计算机组成与设计:硬件/软件接口, David A. Patterson, John L. Hennessy
 
+接口：
+
+计算机系统综合课程设计, 杨全胜 （只能参考框架，书中代码的细节问题很多）
+
 汇编器:
 
 [Python PLY official documentation](http://www.dabeaz.com/ply/ply.html)
+
+[我的翻译+整理版本](https://www.cnblogs.com/LiuRunky/p/Python_Ply_Tutorial.html)
 
 
 

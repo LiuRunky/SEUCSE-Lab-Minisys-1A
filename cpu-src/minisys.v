@@ -95,6 +95,7 @@ module minisys(
     wire        shift;
     wire        reserved_instruction;
     
+    wire        memory_bit_error;                                  //进行RAM读写时地址错误
     wire        memory_sign;                                       //从DATA RAM读出的数据进行零/符号扩展
     wire[1:0]   memory_data_width;                                 //从DATA RAM读写的粒度(00/01/11)
     wire[31:0]  data_from_memio;                                   //从MEM/IO选择单元取出的数据
@@ -138,7 +139,6 @@ module minisys(
     
     
     
-    //流水寄存器相关连线
     wire[31:0]  if_id_pc_plus_4;
     wire[31:0]  if_id_pc_plus_4_latch;
     wire[31:0]  if_id_instruction;
@@ -214,7 +214,6 @@ module minisys(
     
     
     
-    //别看了，下面都是无聊的连线
     Ifetch ifetch(
         .Instruction(instruction),
         .Instruction_ex_mem(ex_mem_instruction),
@@ -709,6 +708,8 @@ module minisys(
         .IO_read_data_ctc(io_read_data_ctc)
     );
     
+    /*
+    //1x32bit RAM
     DataMEM datamem(
         .clock(clock),
         .Memory_write(memory_write),
@@ -723,6 +724,27 @@ module minisys(
         .Upg_dat_i(upg_dat_o),
         .Upg_done_i(upg_done_o)
     );
+    */
+    //4x8bit RAM
+    DataMEM_4x8 datamem_4x8(
+        .clock(clock),
+        .Memory_write(ex_mem_memory_write),
+        .Address(ex_mem_alu_result),
+        .Read_data(memory_read_data),
+        .Write_data(write_data_latch),
+        
+        .Upg_rst_i(upg_rst),
+        .Upg_clk_i(upg_clk_o),
+        .Upg_wen_i(upg_wen_o & upg_adr_o[14]),
+        .Upg_adr_i(upg_adr_o[13:0]),
+        .Upg_dat_i(upg_dat_o),
+        .Upg_done_i(upg_done_o),
+        
+        .Signed_extend(ex_mem_memory_sign),
+        .Memory_data_width(ex_mem_memory_data_width),
+        .Bit_error(memory_bit_error)
+    );
+
     
     output[23:0]    LED2N4;
     LED led(

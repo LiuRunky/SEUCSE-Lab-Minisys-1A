@@ -14,25 +14,25 @@ module DataMEM_4x8(
     input       clock;
     input       Memory_write;
     input[31:0] Address;
-    input[31:0] Write_data;                                 //Ğ´½øRAMµÄÊı¾İ
-    output[31:0]    Read_data;                              //´ÓRAM¶Á³öµÄÊı¾İ
+    input[31:0] Write_data;                                 //å†™è¿›RAMçš„æ•°æ®
+    output[31:0]    Read_data;                              //ä»RAMè¯»å‡ºçš„æ•°æ®
     
-    input       Signed_extend;                              //ÊÇ·ñĞèÒª·ûºÅÀ©Õ¹
-    input[1:0]  Memory_data_width;                          //¶ÁĞ´µÄ¿í¶È
-                                                            //(00: 8bit, 01: 16bit, 10: 32bit)
-    output      Bit_error;                                  //¶ÁĞ´¿í¶ÈÊÇ·ñÓĞÎó
+    input       Signed_extend;                              //æ˜¯å¦éœ€è¦ç¬¦å·æ‰©å±•
+    input[1:0]  Memory_data_width;                          //è¯»å†™çš„å®½åº¦
+                                                            //(00: 8bit, 01: 16bit, 11: 32bit)
+    output      Bit_error;                                  //è¯»å†™å®½åº¦æ˜¯å¦æœ‰è¯¯
     
-    //UART±à³ÌÆ÷Òı½Å
-    input       Upg_rst_i;                                  //UPG reset(¸ßÎªactive)
-    input       Upg_clk_i;                                  //UPGÊ±ÖÓ(clk2)
-    input       Upg_wen_i;                                  //UPGĞ´Ê¹ÄÜ
-    input[13:0] Upg_adr_i;                                  //UPGĞ´µØÖ·
-    input[31:0] Upg_dat_i;                                  //UPGĞ´Êı¾İ
-    input       Upg_done_i;                                 //µ±´«ÊäÍê³ÉºóÎª¸ß
+    //UARTç¼–ç¨‹å™¨å¼•è„š
+    input       Upg_rst_i;                                  //UPG reset(é«˜ä¸ºactive)
+    input       Upg_clk_i;                                  //UPGæ—¶é’Ÿ(clk2)
+    input       Upg_wen_i;                                  //UPGå†™ä½¿èƒ½
+    input[13:0] Upg_adr_i;                                  //UPGå†™åœ°å€
+    input[31:0] Upg_dat_i;                                  //UPGå†™æ•°æ®
+    input       Upg_done_i;                                 //å½“ä¼ è¾“å®Œæˆåä¸ºé«˜
 
     
     wire clk;
-    assign clk = clock/*!clock*/;                           //ÎªÁË½â¾öÊ±ÖÓÑÓ³ÙÎÊÌâ
+    assign clk = clock/*!clock*/;                           //ä¸ºäº†è§£å†³æ—¶é’Ÿå»¶è¿Ÿé—®é¢˜
     
     wire kickoff = Upg_rst_i | ((~Upg_rst_i) & Upg_done_i);
     
@@ -90,28 +90,28 @@ module DataMEM_4x8(
             2'b00:
             begin
                 case (Address[1:0])
-                    //¶ÁĞ´RAM #0
+                    //è¯»å†™RAM #0
                     2'b00:
                     begin
                         memory_write_split = 4'b0001 & {4{Memory_write}};
                         write_data_split[7:0] = Write_data[7:0];
                         Read_data[7:0] = read_data_split[7:0];
                     end
-                    //¶ÁĞ´RAM #1
+                    //è¯»å†™RAM #1
                     2'b01:
                     begin
                         memory_write_split = 4'b0010 & {4{Memory_write}};
                         write_data_split[15:8] = Write_data[7:0];
                         Read_data[7:0] = read_data_split[15:8];
                     end
-                    //¶ÁĞ´RAM #2
+                    //è¯»å†™RAM #2
                     2'b10:
                     begin
                         memory_write_split = 4'b0100 & {4{Memory_write}};
                         write_data_split[23:16] = Write_data[7:0];
                         Read_data[7:0] = read_data_split[23:16];
                     end
-                    //¶ÁĞ´RAM #3
+                    //è¯»å†™RAM #3
                     2'b11:
                     begin
                          memory_write_split = 4'b1000 & {4{Memory_write}};
@@ -126,14 +126,14 @@ module DataMEM_4x8(
             begin
                 Bit_error = Address[0] & Memory_write;
                 case (Address[1])
-                    //¶ÁĞ´RAM #0, #1
+                    //è¯»å†™RAM #0, #1
                     1'b0:
                     begin
                         memory_write_split = 4'b0011 & {4{Memory_write}};
                         write_data_split[15:0] = Write_data[15:0];
                         Read_data[15:0] = read_data_split[15:0];
                     end
-                    //¶ÁĞ´RAM #2, #3
+                    //è¯»å†™RAM #2, #3
                     1'b1:
                     begin
                         memory_write_split = 4'b1100 & {4{Memory_write}};

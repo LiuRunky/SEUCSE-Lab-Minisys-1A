@@ -1,3 +1,4 @@
+import os
 import math
 from ply import lex, yacc
 
@@ -23,16 +24,22 @@ lex_yacc_analyze_state = 0
 # store data in format of [data, width, offset]
 # data is transformed to hexadecimal
 data_storage = []
+data_segment_offset = 0
 data_relative_offset = 0
 
 # MIPS assembly code in format of [code, offset]
 code_storage = []
+code_segment_offset = 0
 code_relative_offset = 0
 # expand pseudo code in format of [code, pseudo offset]
 expand_pseudo = []
+# variable definition in format of [variable, offset]
+variable_definition = []
 # label definition in format of [label, offset]
 label_definition = []
 
+# current filename
+current_filename = ''
 
 ##############################
 # Lex components declaration #
@@ -80,13 +87,13 @@ def t_PIDNAME(t):
                 break|syscall|eret|
                 lui|
                 lbu|lhu|lw|sb|sh|sw|
-                beq|bne|bgez|bgtz|blez|bltz|bgezal|bltzal|
+                beq|bne|bgtz|blez|bgezal|bltzal|
                 push|pop|
-                jle|jge
+                jlu|jleu|jgu|jgeu
             )[0-9a-zA-Z_\$\.]+
         )|
         (
-            (addi|sub|mult|div|slti|lb|lh)[0-9a-tw-zA-TW-Z_\$\.][0-9a-zA-Z_\$\.]*
+            (addi|sub|mult|div|slti|lb|lh|jle|jge)[0-9a-tv-zA-TV-Z_\$\.][0-9a-zA-Z_\$\.]*
         )|
         (
             (and|or|xor)[0-9a-hj-zA-HJ-Z_\$\.][0-9a-zA-Z_\$\.]*
@@ -95,10 +102,13 @@ def t_PIDNAME(t):
             (sll|srl|sra)[0-9a-uw-zA-UW-Z_\$\.][0-9a-zA-Z_\$\.]*
         )|
         (
+            (bgez|bltz)([0-9b-zB-Z_\$\.]|a[0-9a-km-zA-KM-Z_\$\.])[0-9a-zA-Z_\$\.]*
+        )|
+        (
             jal[0-9a-qs-zA-QS-Z_\$\.][0-9a-zA-Z_\$\.]*
         )|
         (
-            j(g|l)[0-9a-df-zA-DF-Z_\$\.][0-9a-zA-Z_\$\.]*
+            j(g|l)[0-9a-df-tv-zA-DF-TV-Z_\$\.][0-9a-zA-Z_\$\.]*
         )|
         (
             (add|slt)[0-9a-hj-zA-H_\$\.][0-9a-zA-Z_\$\.]*
@@ -191,7 +201,7 @@ def t_NOP(t):
 
 
 def t_IDNAME(t):
-    r"""[a-zA-Z][0-9a-zA-Z]*"""
+    r"""[a-zA-Z_][0-9a-zA-Z_]*"""
     return t
 
 
@@ -206,7 +216,7 @@ def t_STRING(t):
 
 
 def t_COMMENT(t):
-    r"""\#[ \S]*"""
+    r"""\#[^\n\r]*"""
     return t
 
 
@@ -214,7 +224,8 @@ t_ignore = ' \t'
 
 
 def t_error(t):
-    raise Exception('Lex error {} at line {}'.format(t.value[0], t.lineno))
+    raise Exception('Lex error {} at line {}, illegal character {}'
+                    .format(t.value[0], t.lineno, t.value[0]))
 
 
 ###############################
@@ -248,6 +259,9 @@ def p_data(p):
 def p_data_segment(p):
     """data_segment : DATA ENDL
                     | DATA VALUE ENDL"""
+    global data_segment_offset
+    if len(p) == 4:
+        data_segment_offset = get_value(p[2])
 
 
 def p_variables(p):
@@ -275,10 +289,15 @@ def p_variables(p):
 def p_variable(p):
     """variable : ENDL
                 | IDNAME COLON variable_data ENDL"""
+    global variable_definition
+    global data_relative_offset
+
     if lex_yacc_analyze_state == 0 and len(p) == 5:
+        p[1] = current_filename + '$' + p[1]
         if p[1] in dict_variable:
             raise Exception('redefinition of variable at line {}'.format(p.lineno(1)))
         dict_variable[p[1]] = p.lineno(1)
+        variable_definition.append([p[1], data_relative_offset])
 
 
 def p_variable_data(p):
@@ -320,7 +339,7 @@ def p_variable_data(p):
             data_storage.append([get_value(p[2]), 4, data_relative_offset])
             data_relative_offset += 4
         elif p[1] == '.ascii':
-            width = 40
+            width = 5
             if len(p[2]) >= 2 and p[2][0] == p[2][-1] == '\"':
                 for i in range(1, len(p[2])-1):
                     data_storage.append([ord(p[2][i]), 1, data_relative_offset])
@@ -334,25 +353,25 @@ def p_variable_data(p):
     if len(p) == 4:
         width = p[1]
         if len(p[3]) >= 2 and p[3][0] == p[3][-1] == '\"':
-            if width != 40:
+            if width != 5:
                 raise Exception('incompatible value type at line {}'.format(p.lineno))
             for i in range(1, len(p[3]) - 1):
                 data_storage.append([ord(p[3][i]), 1, data_relative_offset])
                 data_relative_offset += 1
         else:
             data_type = 'BYTE'
-            if width == 8:
+            if width == 1:
                 data_type = 'BYTE'
-            elif width == 16:
+            elif width == 2:
                 data_type = 'HALF'
-            elif width == 32:
+            elif width == 4:
                 data_type = 'WORD'
-            elif width == 40:
+            elif width == 5:
                 data_type = 'ASCII'
-            if invalid_value(p[3], width % 32):
+            if invalid_value(p[3], upmod(width*8, 32)):
                 raise Exception('data exceed {} at line {}'.format(data_type, p.lineno(3)))
-            data_storage.append([get_value(p[3]), int((width % 32) / 8), data_relative_offset])
-            data_relative_offset += int((width % 32) / 8)
+            data_storage.append([get_value(p[3]), upmod(width, 4), data_relative_offset])
+            data_relative_offset += upmod(width, 4)
 
     if width < 0:
         raise Exception('unexpected error of data width at line {}'.format(p.lineno(3)))
@@ -366,23 +385,13 @@ def p_text(p):
 def p_text_segment(p):
     """text_segment : TEXT ENDL
                     | TEXT VALUE ENDL"""
+    global code_segment_offset
+    if len(p) == 4:
+        code_segment_offset = get_value(p[2])
 
 
 def p_code(p):
-    """code : start_label instructions"""
-
-
-def p_start_label(p):
-    """start_label : IDNAME COLON"""
-    global code_relative_offset
-    global label_definition
-
-    if lex_yacc_analyze_state == 0:
-        if p[1] in dict_label:
-            raise Exception('redefinition of label at line {}'.format(p.lineno(1)))
-        dict_label[p[1]] = p.lineno(1)
-
-    label_definition.append([p[1] + p[2], code_relative_offset])
+    """code : instructions"""
 
 
 def p_instructions(p):
@@ -397,6 +406,7 @@ def p_label(p):
     global code_relative_offset
     global label_definition
 
+    p[1] = current_filename + '$' + p[1]
     if lex_yacc_analyze_state == 0:
         if p[1] in dict_variable:
             raise Exception('label definition conflicts with variable at line'.
@@ -451,6 +461,18 @@ def p_command(p):
     if p[1] == 'jle':
         expand_pseudo.append(['slt $1,{},{}'.format(p[4], p[2]), code_relative_offset])
         expand_pseudo.append(['beq $1,$0,{}'.format(p[6]), code_relative_offset])
+    if p[1] == 'jgu':
+        expand_pseudo.append(['sltu $1,{},{}'.format(p[4], p[2]), code_relative_offset])
+        expand_pseudo.append(['bne $1,$0,{}'.format(p[6]), code_relative_offset])
+    if p[1] == 'jgeu':
+        expand_pseudo.append(['sltu $1,{},{}'.format(p[2], p[4]), code_relative_offset])
+        expand_pseudo.append(['beq $1,$0,{}'.format(p[6]), code_relative_offset])
+    if p[1] == 'jlu':
+        expand_pseudo.append(['sltu $1,{},{}'.format(p[2], p[4]), code_relative_offset])
+        expand_pseudo.append(['bne $1,$0,{}'.format(p[6]), code_relative_offset])
+    if p[1] == 'jleu':
+        expand_pseudo.append(['sltu $1,{},{}'.format(p[4], p[2]), code_relative_offset])
+        expand_pseudo.append(['beq $1,$0,{}'.format(p[6]), code_relative_offset])
 
     temp_string = p[1]
     if len(p) > 2:
@@ -465,11 +487,17 @@ def p_immediate(p):
     """immediate : IDNAME
                  | PIDNAME
                  | VALUE"""
-    if lex_yacc_analyze_state == 1:
-        if not p[1][0].isdigit():
+    if not p[1][0].isdigit():
+        p[1] = current_filename + '$' + p[1]
+        if lex_yacc_analyze_state == 1:
             if p[1] not in dict_variable and p[1] not in dict_label:
                 raise Exception('undefined variable or label at line {}'.format(p.lineno(1)))
     p[0] = p[1]
+
+
+# get result ranging from [1, MOD]
+def upmod(x, mod):
+    return (x - 1) % mod + 1
 
 
 # get radix
@@ -504,9 +532,39 @@ def invalid_value(str, width):
         return False
 
 
-if __name__ == '__main__':
+def assembly_analyze(filename):
+    global lex_yacc_analyze_state
+    global data_storage
+    global data_segment_offset
+    global data_relative_offset
+    global code_storage
+    global code_segment_offset
+    global code_relative_offset
+    global expand_pseudo
+    global variable_definition
+    global label_definition
+    global dict_label
+    global dict_variable
+    global current_filename
+
+    # initialize
+    lex_yacc_analyze_state = 0
+    data_storage = []
+    data_segment_offset = 0
+    data_relative_offset = 0
+    code_storage = []
+    code_segment_offset = 0
+    code_relative_offset = 0
+    expand_pseudo = []
+    variable_definition = []
+    label_definition = []
+    dict_label = {}
+    dict_variable = {}
+    current_filename = str(filename).split('\\')[-1][0:-4]
+    current_file_prefix = filename[0:-4]
+
     # file input
-    file = open('input.txt', 'r')
+    file = open(filename, 'r')
     data = file.read()
     file.close()
 
@@ -517,7 +575,7 @@ if __name__ == '__main__':
     parser = yacc.yacc(debug=True)
 
     lex_list = []
-    no_comment_data = ""
+    no_comment_data = ''
 
     # conduct preliminary lexical analysis to obtain token list
     lexer.input(data)
@@ -538,14 +596,15 @@ if __name__ == '__main__':
 
     for i in range(len(lex_list)):
         if lex_list[i][0] == 'ENDL':
-            # print()
             no_comment_data += '\n'
         else:
-            # print(' ', lex_list[i][1], end="")
-            no_comment_data += ' ' + lex_list[i][1]
+            if lex_list[i][1] != ':':
+                no_comment_data += ' '
+            no_comment_data += lex_list[i][1]
 
-    # for i in range(len(lex_list)):
-    #     print(lex_list[i])
+    # formatted_code = open("formatted_code.txt", 'w')
+    # formatted_code.write(no_comment_data)
+    # formatted_code.close()
 
     # first syntax analysis, acquire and check variable definitions, acquire label definitions
     lexer.lineno = 1
@@ -564,9 +623,19 @@ if __name__ == '__main__':
     parser.parse(no_comment_data)
 
     # print data storage layout of data segment
-    print('data storage info in format of [value, width, offset]')
+    data_output = open(current_file_prefix + '_data_output.txt', 'w')
+    data_output.write('\\\\segment offset\n')
+    data_output.write('{}\n'.format(data_segment_offset))
+    data_output.write('\\\\variable definition in format of [name, end_offset]\n')
+    for [name, offset] in variable_definition:
+        data_output.write(name + ' ' + str(offset) + '\n')
+    data_output.write('\\\\data storage info in format of [value, width, offset]\n')
     for i in range(len(data_storage)):
-        print(data_storage[i])
+        for j in range(3):
+            data_output.write(str(data_storage[i][j]) + ' ')
+        data_output.write('\n')
+    data_output.write('\\\\end of output\n')
+    data_output.close()
 
     # 文法分析之外的检查：
     # 1. 变量/标号的重复定义/未定义 [OK]
@@ -656,10 +725,18 @@ if __name__ == '__main__':
                 raise Exception('immediate exceed limit at line {}'.format(nxt_lineno))
             i += 4
 
-        elif cur_type == 'BZICOM' or cur_type == 'SICOM':
+        elif cur_type == 'BZICOM':
             [nxt_type, nxt_value, nxt_lineno, nxt_pos] = lex_list[i+3]
             if nxt_type != 'VALUE':
-                raise Exception('invalid immediate at line {}'.format(nxt_lineno))
+                if nxt_type in dict_variable:
+                    raise Exception('mistake variable as label at line {}'.format(nxt_lineno))
+            elif invalid_value(nxt_value, 16):
+                raise Exception('immediate exceed limit at line {}'.format(nxt_lineno))
+
+        elif cur_type == 'SICOM':
+            [nxt_type, nxt_value, nxt_lineno, nxt_pos] = lex_list[i+3]
+            if nxt_type != 'VALUE':
+                raise Exception('invalid immediate at line {}'.format(nxt_lineno) + nxt_type)
             elif invalid_value(nxt_value, 16):
                 raise Exception('immediate exceed limit at line {}'.format(nxt_lineno))
             i += 3
@@ -676,13 +753,61 @@ if __name__ == '__main__':
     # print code storage layout of code segment
     j = 0
     k = 0
-    print('code storage info in format of [code, pre-reordered offset]')
+    code_output = open(current_file_prefix + '_code_output.txt', 'w')
+    code_output.write('\\\\segment offset\n')
+    code_output.write('{}\n'.format(code_segment_offset))
+    code_output.write('\\\\variable definition in format of [name, end_offset]\n')
+    for [name, offset] in variable_definition:
+        code_output.write(name + ' ' + str(offset) + '\n')
+    code_output.write('\\\\code storage info in format of [code]\n')
+    # code_output.write('.text {}\n'.format(code_segment_offset))
     for i in range(len(code_storage)):
         while k < len(label_definition) and label_definition[k][1] == code_storage[i][1]:
-            print(label_definition[k])
+            code_output.write(label_definition[k][0] + ' ')
             k += 1
         if j == len(expand_pseudo) or code_storage[i][1] != expand_pseudo[j][1]:
-            print(code_storage[i])
+            code_output.write(code_storage[i][0] + '\n')
         while j < len(expand_pseudo) and expand_pseudo[j][1] == code_storage[i][1]:
-            print(expand_pseudo[j])
+            code_output.write(expand_pseudo[j][0] + '\n')
             j += 1
+    code_output.write('\\\\end of output\n')
+    code_output.close()
+
+# todo: 1. 是否能在jl/jle/jg/jge中用$1
+#       reply: 大概是可以的，$1用作临时变量
+#       2. 准备一下链接器
+#       reply: 已完成
+
+
+file_list = []
+
+
+def is_folder(filename):
+    for i in range(len(filename)):
+        if filename[i] == '.':
+            return False
+    return True
+
+
+def format_of(filename):
+    n = len(filename)
+    for i in range(n):
+        if filename[n-i-1] == '.':
+            return filename[n-i: n]
+
+
+def get_file_list(current_path):
+    global file_list
+
+    current_list = os.listdir(current_path)
+    for filename in current_list:
+        if not is_folder(filename) and format_of(filename) == 'asm':
+            file_list.append(current_path + filename)
+
+
+if __name__ == '__main__':
+    file_list = []
+    get_file_list('.\\test\\')
+
+    for filename in file_list:
+        assembly_analyze(filename)

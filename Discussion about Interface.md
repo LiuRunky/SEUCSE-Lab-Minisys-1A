@@ -63,16 +63,6 @@ la 58C7H
 
 ti 4F27H
 
-![image-20211214171803700](C:\Users\asus\AppData\Roaming\Typora\typora-user-images\image-20211214171803700.png)
-
-应该取0000_8517，但慢了
-
-暂时先把clk = !clock改成clk = clock了，也和IO读写统一
-
-
-
-
-
 
 
 <h3>Display</h3>

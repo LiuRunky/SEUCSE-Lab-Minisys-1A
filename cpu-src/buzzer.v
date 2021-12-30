@@ -10,20 +10,20 @@ module Buzzer(
     
     input clock;
     input reset;
-    input Write_enable;                 //Ğ´ĞÅºÅ
-    input Select;                       //BuzzerÆ¬Ñ¡ĞÅºÅ
-    input[1:0]  Address;                //µ½BuzzerÄ£¿éµÄµØÖ·µÍ¶Ë£¨´Ë´¦Îª40 or 42£©
-    input[15:0] Write_data_in;          //Ğ´µ½BuzzerÄ£¿éµÄÊı¾İ£¨Êµ¼ÊÓÃ²»ÉÏ£©
-    output      Buzzer_output;          //Êä³öµÄ·äÃùÆ÷ĞÅºÅ
+    input Write_enable;                 //å†™ä¿¡å·
+    input Select;                       //Buzzerç‰‡é€‰ä¿¡å·
+    input[1:0]  Address;                //åˆ°Buzzeræ¨¡å—çš„åœ°å€ä½ç«¯ï¼ˆæ­¤å¤„ä¸º40 or 42ï¼‰
+    input[15:0] Write_data_in;          //å†™åˆ°Buzzeræ¨¡å—çš„æ•°æ®
+    output      Buzzer_output;          //è¾“å‡ºçš„èœ‚é¸£å™¨ä¿¡å·
     
     
     reg     Buzzer_output;
-    reg     status;                     //¿ØÖÆ¿ª¹Ø
-    reg[15:0]   maximum;                //Êµ¼ÊÉÏÀàËÆÒ»¸ö¼ÆÊ±Æ÷
+    reg     status;                     //æ§åˆ¶å¼€å…³
+    reg[15:0]   maximum;                //å®é™…ä¸Šç±»ä¼¼ä¸€ä¸ªè®¡æ—¶å™¨
     reg[15:0]   counter;
     
     
-    //BuzzerÄ£¿éÊµÏÖ
+    //Buzzeræ¨¡å—å®ç°
     always @(posedge clock)
     begin
         if (Select == 0 || reset == 1)

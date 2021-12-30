@@ -11,7 +11,6 @@ using namespace std;
 
 
 //data structure definitions
-
 struct Variable
 {
 	string name;
@@ -82,7 +81,7 @@ int valueof(string str)
 	
 	for(int i=0;i<n;i++)
 	{
-		int digit=(str[i]>='0' && str[i]<='9')?str[i]-'0':str[i]-'a';
+		int digit=(str[i]>='0' && str[i]<='9')?str[i]-'0':str[i]-'a'+10;
 		if(digit<0 || digit>=base)
 			throw "valueof(): invalid value";
 		res=res*base+digit;
@@ -163,7 +162,8 @@ void load_code(string filename,string filepath)
 	else
 	{
 		getline(fin,line);
-		cur.offset=valueof(line);
+		//always 4B, so here offset means line number
+		cur.offset=valueof(line)/4;
 	}
 	
 	getline(fin,line);
@@ -358,11 +358,14 @@ int main()
 	
 	//rearrange offset and sort code segment
 	//assume total applications not exceed 15
+	sort(codesegs.begin(),codesegs.end(),cmp);
+	
 	for(int i=0;i<codesegs.size();i++)
 		if(codesegs[i].offset==0)
 		{
 			string tmp="0x0000";
 			tmp[3]=(i<10?'0'+i:'a'+i-10);
+			cout<<tmp<<endl; 
 			codesegs[i].offset=valueof(tmp);
 		}
 	sort(codesegs.begin(),codesegs.end(),cmp);
@@ -392,7 +395,7 @@ int main()
 	fout<<"\\\\code start from here\n";
 	fout<<".text 0\n"; 
 	for(int i=0;i<linked_codes.size();i++)
-		fout<<linked_codes[i]<<" #"<<i<<endl;
+		fout<<linked_codes[i]/*<<" #"<<i*/<<'\n';
 	fout.close();
 	
 	return 0;

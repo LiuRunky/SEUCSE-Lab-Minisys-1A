@@ -442,7 +442,17 @@ module minisys(
         .EPC_read_data(epc_read_data),
         
         .CP0_data(cp0_data),
-        .PC_exception(pc_exception)
+        .PC_exception(pc_exception),
+
+        .Register_write_ex_mem(ex_mem_register_write),
+        .Write_back_address_ex_mem(ex_mem_write_back_address),
+        .Register_write_mem_wb(mem_wb_register_write),
+        .Write_back_address_mem_wb(mem_wb_write_back_address),
+        .Memory_or_IO_mem_wb(mem_wb_memory_or_io),
+        
+        .ALU_result_ex_mem(ex_mem_alu_result),
+        .ALU_result_mem_wb(mem_wb_alu_result),
+        .Read_data_mem_wb(mem_wb_memory_or_io_read_data)
     );
     
     CP0 cp0(
@@ -775,7 +785,7 @@ module minisys(
         .reset(reset),
         .Read_enable(key_ctrl),
         .Select(1'b1),
-        .Address(ex_mem_alu_result[1:0]),
+        .Address(ex_mem_alu_result[2:0]),
         .Row(KeyRow0N4),
         .Column(KeyColumn0N4),
         .Read_data_out(io_read_data_key)

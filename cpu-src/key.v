@@ -10,15 +10,15 @@ module Key(
     );
     
     input clock;
-    input reset;                        //¸´Î»ĞÅºÅ
-    input Read_enable;                  //¶ÁĞÅºÅ
-    input Select;                       //KeyÆ¬Ñ¡ĞÅºÅ
-    input[1:0]  Address;                //µ½KeyÄ£¿éµÄµØÖ·µÍ¶Ë£¨´Ë´¦Îª10 or 12£©
+    input reset;                        //å¤ä½ä¿¡å·
+    input Read_enable;                  //è¯»ä¿¡å·
+    input Select;                       //Keyç‰‡é€‰ä¿¡å·
+    input[3:0]  Address;                //åˆ°Keyæ¨¡å—çš„åœ°å€ä½ç«¯ï¼ˆæ­¤å¤„ä¸º10 or 12 or 14ï¼‰
     
-    output[3:0]  Row;                   //ĞĞÏß
-    input[3:0]  Column;                 //ÁĞÏß
+    output[3:0]  Row;                   //è¡Œçº¿
+    input[3:0]  Column;                 //åˆ—çº¿
     
-    output[15:0]    Read_data_out;      //ËÍµ½CPUµÄ4x4¼üÅÌÖµ
+    output[15:0]    Read_data_out;      //é€åˆ°CPUçš„4x4é”®ç›˜å€¼
     
     
     reg[3:0]    Row;
@@ -27,9 +27,9 @@ module Key(
     reg[15:0]   Read_data_out;
     
 
-    reg still;                      //¼ÙÈçÒ»´Î°´ÏÂºóÎ´ËÉ¿ª£¬ÄÇÃ´ÔÙ´ÎÉ¨ÃèÊ±²»»á½øvalue
+    reg still;                      //å‡å¦‚ä¸€æ¬¡æŒ‰ä¸‹åæœªæ¾å¼€ï¼Œé‚£ä¹ˆå†æ¬¡æ‰«ææ—¶ä¸ä¼šè¿›value
     
-    //Key¹¦ÄÜÊµÏÖ
+    //KeyåŠŸèƒ½å®ç°
     always @(posedge clock or posedge reset)
     begin
         if (Select == 0 || reset == 1)
@@ -43,13 +43,13 @@ module Key(
         else
         begin
             case (Row)
-                4'b0000: begin //¿ªÊ¼É¨Ãè
-                             if (Column != 4'b1111) //µ±ÁĞÏß²»È«Îª1Ê±¿ªÊ¼É¨Ãè
+                4'b0000: begin //å¼€å§‹æ‰«æ
+                             if (Column != 4'b1111) //å½“åˆ—çº¿ä¸å…¨ä¸º1æ—¶å¼€å§‹æ‰«æ
                                  Row = 4'b0111;
                              else
                                  still = 1'b0;
                          end
-                4'b0111: begin //É¨Ãè0ĞĞ
+                4'b0111: begin //æ‰«æ0è¡Œ
                              if (Column != 4'b1111)
                              begin
                                  if (still == 1'b0 || value[7:4] != Row || value[3:0] != Column)
@@ -70,7 +70,7 @@ module Key(
                              else
                                  Row = 4'b1011;
                          end
-                4'b1011: begin //É¨Ãè1ĞĞ
+                4'b1011: begin //æ‰«æ1è¡Œ
                              if (Column != 4'b1111)
                              begin
                                  if (still == 1'b0 || value[7:4] != Row || value[3:0] != Column)
@@ -91,7 +91,7 @@ module Key(
                              else
                                  Row = 4'b1101;
                          end
-                4'b1101: begin //É¨Ãè2ĞĞ
+                4'b1101: begin //æ‰«æ2è¡Œ
                              if (Column != 4'b1111)
                              begin
                                  if (still == 1'b0 || value[7:4] != Row || value[3:0] != Column)
@@ -112,7 +112,7 @@ module Key(
                              else
                                  Row = 4'b1110;
                          end
-                4'b1110: begin //É¨Ãè3ĞĞ
+                4'b1110: begin //æ‰«æ3è¡Œ
                              if (Column != 4'b1111)
                              begin
                                  if (still == 1'b0 || value[7:4] != Row || value[3:0] != Column)
@@ -140,11 +140,12 @@ module Key(
 
             if (Read_enable == 1)
                 case (Address)
-                    2'b00: Read_data_out = value;
-                    2'b10: begin
+                    3'b000: Read_data_out = value;
+                    3'b010: begin
                                Read_data_out = state;
                                state = state & 16'hFFFE;
                            end
+                    3'b100: Read_data_out = {15'h0000,still};
                     default: Read_data_out = 16'hZZZZ;
                 endcase
         end

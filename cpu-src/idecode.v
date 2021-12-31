@@ -1,8 +1,8 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Module: ÒëÂëµ¥Ôª
-// Function:    1. ¶Á/Ğ´¼Ä´æÆ÷×é
-//              2. ÊµÏÖÁãÀ©Õ¹/Î»À©Õ¹
+// Module: è¯‘ç å•å…ƒ
+// Function:    1. è¯»/å†™å¯„å­˜å™¨ç»„
+//              2. å®ç°é›¶æ‰©å±•/ä½æ‰©å±•
 //////////////////////////////////////////////////////////////////////////////////
 
 
@@ -19,28 +19,32 @@ module Idecode(
     Cause_write,Cause_write_data,Cause_read_data,
     Status_write,Status_write_data,Status_read_data,
     EPC_write,EPC_write_data,EPC_read_data,
-    CP0_data,PC_exception
+    CP0_data,PC_exception,
+
+    Register_write_ex_mem,Write_back_address_ex_mem,
+    Register_write_mem_wb,Write_back_address_mem_wb,Memory_or_IO_mem_wb,
+    ALU_result_ex_mem,ALU_result_mem_wb,Read_data_mem_wb
     );
 
-    input[31:0]     Instruction;        //Ö¸Áî
-    input[31:0]     Received_data;      //´ÓDATA RAM»òI/O¶Ë¿ÚÈ¡³öµÄÊı¾İ
-    input[31:0]     PC_plus_4;          //ÕæÕıµÄPC+4(µ±Ç°Ö¸ÁîµÄÏÂÒ»Ìõ)
-    input[31:0]     PC_plus_4_latch;    //ÔÚifetchÖĞ±»Ëø´æ×¡µÄPC+4Öµ
-    input[31:0]     ALU_result;         //ALU¼ÆËã½á¹û
-    input[31:0]     CP0_data_latch;     //Ëø´æµÄCP0Êı¾İ
+    input[31:0]     Instruction;        //æŒ‡ä»¤
+    input[31:0]     Received_data;      //ä»DATA RAMæˆ–I/Oç«¯å£å–å‡ºçš„æ•°æ®
+    input[31:0]     PC_plus_4;          //çœŸæ­£çš„PC+4(å½“å‰æŒ‡ä»¤çš„ä¸‹ä¸€æ¡)
+    input[31:0]     PC_plus_4_latch;    //åœ¨ifetchä¸­è¢«é”å­˜ä½çš„PC+4å€¼
+    input[31:0]     ALU_result;         //ALUè®¡ç®—ç»“æœ
+    input[31:0]     CP0_data_latch;     //é”å­˜çš„CP0æ•°æ®
     
     input       clock;
     input       reset;
     
     input       Jal,Jalr;
     input       Bgezal,Bltzal;
-    input       Memory_or_IO;           //Êı¾İÀ´Ô´ÊÇ·ñÎªDATA RAM»òI/O¶Ë¿Ú
-    input       Register_write;         //ÊÇ·ñĞ´¼Ä´æÆ÷
-    input[4:0]  Write_back_address;     //ÓÃÓÚÖ¸¶¨´ıĞ´¼Ä´æÆ÷
+    input       Memory_or_IO;           //æ•°æ®æ¥æºæ˜¯å¦ä¸ºDATA RAMæˆ–I/Oç«¯å£
+    input       Register_write;         //æ˜¯å¦å†™å¯„å­˜å™¨
+    input[4:0]  Write_back_address;     //ç”¨äºæŒ‡å®šå¾…å†™å¯„å­˜å™¨
     
-    output[31:0]    Read_data_1;        //´Ó¼Ä´æÆ÷ÖĞÈ¡³öµÄµÚÒ»¸öÊı£¬Ò»°ãÎªrs
-    output[31:0]    Read_data_2;        //´Ó¼Ä´æÆ÷ÖĞÈ¡³öµÄµÚ¶ş¸öÊı£¬Ò»°ãÎªrt£¨RÖ¸Áî£©
-    output[31:0]    Immediate_extend;   //¾­¹ıÁãÀ©Õ¹/·ûºÅÀ©Õ¹ºóµÄÁ¢¼´Êı
+    output[31:0]    Read_data_1;        //ä»å¯„å­˜å™¨ä¸­å–å‡ºçš„ç¬¬ä¸€ä¸ªæ•°ï¼Œä¸€èˆ¬ä¸ºrs
+    output[31:0]    Read_data_2;        //ä»å¯„å­˜å™¨ä¸­å–å‡ºçš„ç¬¬äºŒä¸ªæ•°ï¼Œä¸€èˆ¬ä¸ºrtï¼ˆRæŒ‡ä»¤ï¼‰
+    output[31:0]    Immediate_extend;   //ç»è¿‡é›¶æ‰©å±•/ç¬¦å·æ‰©å±•åçš„ç«‹å³æ•°
     
     input       Mfc0,Mtc0;
     
@@ -59,53 +63,77 @@ module Idecode(
     wire[5:0]   opcode;
     wire[4:0]   rs;
     wire[4:0]   rt;
-    wire[4:0]   rd;                     //´ó¶àÊıRÖ¸ÁîÖĞµÄÄ¿µÄ¼Ä´æÆ÷ºÅ
-    wire[15:0]  immediate;              //IÖ¸ÁîÖĞµÄimmediate / offset
+    wire[4:0]   rd;                     //å¤§å¤šæ•°RæŒ‡ä»¤ä¸­çš„ç›®çš„å¯„å­˜å™¨å·
+    wire[31:0]  rt_value;               //rdå¯„å­˜å™¨çš„å€¼ï¼Œç”¨äºmtc0
+    wire[31:0]  rd_value;               //rdå¯„å­˜å™¨çš„å€¼ï¼Œç”¨äºmfc0 / mtc0
+    wire[15:0]  immediate;              //IæŒ‡ä»¤ä¸­çš„immediate / offset
     
-    wire        sign;                   //Á¢¼´ÊıµÄ·ûºÅÎ»
+    wire        sign;                   //ç«‹å³æ•°çš„ç¬¦å·ä½
     
     
-    reg[31:0]   register[0:31];         //32x32¼Ä´æÆ÷×é
+    reg[31:0]   register[0:31];         //32x32å¯„å­˜å™¨ç»„
     
-    reg[31:0]   write_data;             //Ëø´æ´ıĞ´Êı¾İ
-    reg[4:0]    write_address;           //Ëø´æ´ıĞ´¼Ä´æÆ÷ºÅ
+    reg[31:0]   write_data;             //é”å­˜å¾…å†™æ•°æ®
+    reg[4:0]    write_address;           //é”å­˜å¾…å†™å¯„å­˜å™¨å·
     
     reg[31:0]   cp0_data;
     reg         Cause_write,Status_write,EPC_write;
     reg[31:0]   Cause_write_data,Status_write_data,EPC_write_data;
     
-    reg[31:0]   PC_exception;           //Ó²±àÂëµÄÖĞ¶Ï´¦Àí³ÌĞòÈë¿ÚµØÖ·/EPC
+    reg[31:0]   PC_exception;           //ç¡¬ç¼–ç çš„ä¸­æ–­å¤„ç†ç¨‹åºå…¥å£åœ°å€/EPC
+
+    //å¤„ç†æ•°æ®è½¬å‘
+    input       Register_write_ex_mem,Register_write_mem_wb,Memory_or_IO_mem_wb;
+    input[4:0]  Write_back_address_ex_mem,Write_back_address_mem_wb;
+    input[31:0] ALU_result_ex_mem,ALU_result_mem_wb,Read_data_mem_wb;
     
     
     
-    //·ÖÀëÖ¸Áî·ÖÁ¿
+    //åˆ†ç¦»æŒ‡ä»¤åˆ†é‡
     assign opcode = Instruction[31:26];
     assign rs = Instruction[25:21];
     assign rt = Instruction[20:16];
     assign rd = Instruction[15:11];
     assign immediate = Instruction[15:0];
     
-    //¼Ä´æÆ÷¶Á
+    //å¯„å­˜å™¨è¯»
     assign Read_data_1 = register[rs];
     assign Read_data_2 = register[rt];
+
+    assign rt_value = 
+                (Register_write_ex_mem && Write_back_address_ex_mem != 0 && 
+                        Write_back_address_ex_mem == rt)
+                    ? ALU_result_ex_mem
+                    : (Register_write_mem_wb && Write_back_address_mem_wb != 0 &&
+                            Write_back_address_ex_mem != rt && Write_back_address_mem_wb == rt)
+                        ? (Memory_or_IO_mem_wb ? Read_data_mem_wb : ALU_result_mem_wb)
+                        : register[rt];
+    assign rd_value = 
+                (Register_write_ex_mem && Write_back_address_ex_mem != 0 && 
+                        Write_back_address_ex_mem == rd)
+                    ? ALU_result_ex_mem
+                    : (Register_write_mem_wb && Write_back_address_mem_wb != 0 &&
+                            Write_back_address_ex_mem != rd && Write_back_address_mem_wb == rd)
+                        ? (Memory_or_IO_mem_wb ? Read_data_mem_wb : ALU_result_mem_wb)
+                        : register[rd];
     
     assign CP0_data = cp0_data;
     
     always @(*)
     begin
-        case ({Mfc0,rd})
-            6'b101100: cp0_data = Status_read_data;
-            6'b101101: cp0_data = Cause_read_data;
-            6'b101110: cp0_data = EPC_read_data;
+        case ({Mfc0,rd_value})
+            {1'b1,32'd12}: cp0_data = Status_read_data;
+            {1'b1,32'd13}: cp0_data = Cause_read_data;
+            {1'b1,32'd14}: cp0_data = EPC_read_data;
             default: cp0_data = 32'hFFFFFFFF;
         endcase
         
-        //×¼±¸ÒªĞ´µÄ¼Ä´æÆ÷ºÅ
+        //å‡†å¤‡è¦å†™çš„å¯„å­˜å™¨å·
         write_address = (Jal || (Bgezal && !Negative) || (Bltzal && Negative))
             ? 5'd31
             : ((Bgezal || Bltzal) ? 5'd00 : Write_back_address);
                 
-        //×¼±¸ÒªĞ´µÄÊı¾İ
+        //å‡†å¤‡è¦å†™çš„æ•°æ®
         write_data = (Jal || Jalr || Bgezal || Bltzal)
             ? PC_plus_4_latch
             : (
@@ -114,13 +142,13 @@ module Idecode(
                   : (CP0_data_latch != 32'hFFFFFFFF ? CP0_data_latch : ALU_result)
               );
         
-        //¿ªÊ¼ÖĞ¶ÏÏìÓ¦²½Öè
+        //å¼€å§‹ä¸­æ–­å“åº”æ­¥éª¤
         if (Break || Syscall || Overflow || Reserved_instruction)
         begin
-            //ĞŞ¸ÄCP0.Status.IE
+            //ä¿®æ”¹CP0.Status.IE
             Status_write_data = {Status_read_data[31:1],1'b0};
             
-            //ĞŞ¸ÄCP0.Cause.ExcCode
+            //ä¿®æ”¹CP0.Cause.ExcCode
             case ({Break,Syscall,Overflow,Reserved_instruction})
                 4'b1000: Cause_write_data = {Cause_read_data[31:7],7'b01001_00};
                 4'b0100: Cause_write_data = {Cause_read_data[31:7],7'b01000_00};
@@ -129,45 +157,45 @@ module Idecode(
                 default: Cause_write_data = {Cause_read_data[31:7],7'b00000_00};
             endcase
             
-            //ĞŞ¸ÄCP0.EPC
-            EPC_write_data = PC_plus_4;                         //Ö¸ÏòÏÂÒ»ÌõÖ¸Áî
+            //ä¿®æ”¹CP0.EPC
+            EPC_write_data = PC_plus_4;                         //æŒ‡å‘ä¸‹ä¸€æ¡æŒ‡ä»¤
             
-            //PC_exceptionÎªÖĞ¶Ï´¦Àí³ÌĞòÈë¿ÚµØÖ·0xF000
+            //PC_exceptionä¸ºä¸­æ–­å¤„ç†ç¨‹åºå…¥å£åœ°å€0xF000
             PC_exception = 32'h0000F000;
             
-            //Ğ´Ê¹ÄÜÓĞĞ§
+            //å†™ä½¿èƒ½æœ‰æ•ˆ
             Status_write = 1'b1;
             Cause_write = 1'b1;
             EPC_write = 1'b1;
         end
-        //¿ªÊ¼ÖĞ¶Ï·µ»Ø´¦Àí
+        //å¼€å§‹ä¸­æ–­è¿”å›å¤„ç†
         else if (Eret)
         begin
-            //ĞŞ¸ÄCP0.Status.IE
+            //ä¿®æ”¹CP0.Status.IE
             Status_write_data = {Status_read_data[31:1],1'b1};
             
             PC_exception = EPC_read_data;
             
-            //StatusĞ´Ê¹ÄÜÓĞĞ§
+            //Statuså†™ä½¿èƒ½æœ‰æ•ˆ
             Status_write = 1'b1;
         end
-        //Ö´ĞĞMtc0Ö¸Áî
+        //æ‰§è¡ŒMtc0æŒ‡ä»¤
         else if (Mtc0)
         begin
-            case (rd)
-                5'd12:
+            case (rd_value)
+                32'd12:
                 begin
-                    Status_write_data = Read_data_2;
+                    Status_write_data = rt_value;
                     Status_write = 1'b1;
                 end
-                5'd13:
+                32'd13:
                 begin
-                    Cause_write_data = Read_data_2;
+                    Cause_write_data = rt_value;
                     Cause_write = 1'b1;
                 end
-                5'd14:
+                32'd14:
                 begin
-                    EPC_write_data = Read_data_2;
+                    EPC_write_data = rt_value;
                     EPC_write = 1'b1;
                 end
                 default:
@@ -179,39 +207,39 @@ module Idecode(
             endcase
         end
         else
-        //ÓëÖĞ¶ÏÎŞ¹Ø£¬PC_exceptionÎª0xFFFFFFFF
+        //ä¸ä¸­æ–­æ— å…³ï¼ŒPC_exceptionä¸º0xFFFFFFFF
         begin
             PC_exception = 32'hFFFFFFFF;
             
-            //Ğ´Ê¹ÄÜÎŞĞ§
+            //å†™ä½¿èƒ½æ— æ•ˆ
             Status_write = 1'b0;
             Cause_write = 1'b0;
             EPC_write = 1'b0;
         end
     end
     
-    //Ğ´¼Ä´æÆ÷
+    //å†™å¯„å­˜å™¨
     integer i;
     always @(posedge clock)
     begin
-        if (reset) //³õÊ¼»¯¼Ä´æÆ÷×é
+        if (reset) //åˆå§‹åŒ–å¯„å­˜å™¨ç»„
         begin
             for (i = 0; i < 32; i = i + 1)
                 register[i] <= i;
         end
-        else if (Register_write && write_address != 5'd00) //Ğ´¼Ä´æÆ÷
+        else if (Register_write && write_address != 5'd00) //å†™å¯„å­˜å™¨
         begin
             register[write_address] = write_data;
         end
     end
     
-    //¸ù¾İĞèÇóÍê³É¶Ô16Î»Á¢¼´ÊıµÄ32Î»À©Õ¹
+    //æ ¹æ®éœ€æ±‚å®Œæˆå¯¹16ä½ç«‹å³æ•°çš„32ä½æ‰©å±•
     assign sign = immediate[15];
     assign Immediate_extend[31:16] =
         (opcode == 6'b001100 /*andi*/ || opcode == 6'b001101 /*ori*/ ||
             opcode == 6'b001110 /*xori*/ || opcode == 6'b001011 /*sltiu*/)
-            ? 16'h0000      //ÁãÀ©Õ¹
-            : {16{sign}};   //·ûºÅÀ©Õ¹
+            ? 16'h0000      //é›¶æ‰©å±•
+            : {16{sign}};   //ç¬¦å·æ‰©å±•
     assign Immediate_extend[15:0] = immediate;
     
 endmodule

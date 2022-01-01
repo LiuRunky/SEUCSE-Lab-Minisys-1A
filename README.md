@@ -14,13 +14,13 @@
 
 ~~为了方便调试，指令寄存器 programrom 和数据寄存器 ram 均为 1x32bit，近期会将 ram 改到 4x8bit~~ 已完成
 
-数据冒险采用转发法，阻塞需要通过软件辅助实现；分支默认顺序执行
+数据冒险采用转发法（EX 阶段的 rs, rt 与 ID 阶段的 rd），阻塞需要通过软件辅助实现；分支默认顺序执行
 
 **接口:**
 
-负责所有接口设计，除了 MOOC 中包括的 LED, Switch 之外，额外设计了 Display, Key, CTC, Buzzer, PWM, WDT 模块。
+负责所有接口设计，除了 MOOC 中包括的 LED, Switch 之外，额外设计了 Display, Key, CTC, Buzzer, PWM, WDT 模块
 
-除了 Key 在除颤方面不是很完善之外，所有接口经过测试应该都没有问题。具体地址和读写时的说明详见 "Discussion about Interface.md"
+除了 Key 在除颤方面不是很完善之外，所有接口经过测试应该都没有问题，具体地址和读写时的说明详见 "Discussion about Interface.md"
 
 **汇编器:**
 

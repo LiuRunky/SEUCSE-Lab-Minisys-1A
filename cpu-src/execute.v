@@ -1,15 +1,15 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Module: Ö´ĞĞµ¥Ôª
-// Function:    1. ¼Ó¼õÓëÂß¼­ÔËËã£¬²úÉúZeroFlag
-//              2. ³Ë·¨Æ÷(¿¼ÂÇÁ÷Ë®¼¶Êı)
-//              3. ³ı·¨Æ÷(¿¼ÂÇÊÇ·ñ×èÈû)
-//              4. ¸÷ÀàÒÆÎ»
+// Module: æ‰§è¡Œå•å…ƒ
+// Function:    1. åŠ å‡ä¸é€»è¾‘è¿ç®—ï¼Œäº§ç”ŸZeroFlag
+//              2. ä¹˜æ³•å™¨(è€ƒè™‘æµæ°´çº§æ•°)
+//              3. é™¤æ³•å™¨(è€ƒè™‘æ˜¯å¦é˜»å¡)
+//              4. å„ç±»ç§»ä½
 //
-//Notes:        1. ³ı·¨½á¹ûÎª¸ºÊ±£¬ÊÇ¶ÔÉÌºÍÓàÊıÍ¬Ê±È¡·´µÄ
-//              2. inverse_mul_div¼Ä´æÆ÷²¢²»»áËø´æ
-//              3. ÓĞ·ûºÅ¼Ó·¨²úÉúOverflowºó£¬»á¼ÌĞø½«Êı¾İ´æÈë¼Ä´æÆ÷
-//              4. ³ıÁËbeq/bneÒÔÍâµÄb-typeÅĞ¶Ï²»ÔÚexecuteÖĞ½øĞĞ
+//Notes:        1. é™¤æ³•ç»“æœä¸ºè´Ÿæ—¶ï¼Œæ˜¯å¯¹å•†å’Œä½™æ•°åŒæ—¶å–åçš„
+//              2. inverse_mul_divå¯„å­˜å™¨å¹¶ä¸ä¼šé”å­˜
+//              3. æœ‰ç¬¦å·åŠ æ³•äº§ç”ŸOverflowåï¼Œä¼šç»§ç»­å°†æ•°æ®å­˜å…¥å¯„å­˜å™¨
+//              4. é™¤äº†beq/bneä»¥å¤–çš„b-typeåˆ¤æ–­ä¸åœ¨executeä¸­è¿›è¡Œ
 //////////////////////////////////////////////////////////////////////////////////
 
 
@@ -31,29 +31,29 @@ module Execute(
     input       clock;                          //clk
     input[31:0] Instruction;
     
-    input       ALU_src;                        //Ñ¡ÔñALU²Ù×÷Êı2(0¼Ä´æÆ÷/1Á¢¼´Êı)
-    input[1:0]  ALU_op;                         //Ñ¡ÔñALU½øĞĞµÄÔËËãÀàĞÍ
-    input       Shift;                          //ÊÇ·ñÒÆÎ»ÔËËã
-    input       I_type;                         //ÊÇ·ñÎªIÖ¸Áî
+    input       ALU_src;                        //é€‰æ‹©ALUæ“ä½œæ•°2(0å¯„å­˜å™¨/1ç«‹å³æ•°)
+    input[1:0]  ALU_op;                         //é€‰æ‹©ALUè¿›è¡Œçš„è¿ç®—ç±»å‹
+    input       Shift;                          //æ˜¯å¦ç§»ä½è¿ç®—
+    input       I_type;                         //æ˜¯å¦ä¸ºIæŒ‡ä»¤
     input[31:0] Read_data_1;                    //rs
     input[31:0] Read_data_2;                    //rt
     input[31:0] Immediate_extend;               //imme
-    input[31:0] PC_plus_4;                      //PC+4µÄÖµ¡¾ÎŞÈÎºÎ´¦Àí¡¿
+    input[31:0] PC_plus_4;                      //PC+4çš„å€¼ã€æ— ä»»ä½•å¤„ç†ã€‘
     
-    output[31:0]    ALU_result;                 //ALUÔËËã½á¹û
-    output[31:0]    PC_add_result;              //¶ÔÓÚPC+4+(imme<<2)µÄÔËËã½á¹û¡¾ÒÑ³ıÒÔ4¡¿
-    output          Zero;                       //½á¹ûÊÇ·ñÎª0
-    output          Positive;                   //rsÊÇ·ñÎªÕı
-    output          Negative;                   //rsÊÇ·ñÎª¸º
-    output          Overflow;                   //ÊÇ·ñ²úÉú¼Ó¼õ·¨Òç³ö
-    output          Divide_zero;                //ÊÇ·ñ³ı0
+    output[31:0]    ALU_result;                 //ALUè¿ç®—ç»“æœ
+    output[31:0]    PC_add_result;              //å¯¹äºPC+4+(imme<<2)çš„è¿ç®—ç»“æœã€å·²é™¤ä»¥4ã€‘
+    output          Zero;                       //ç»“æœæ˜¯å¦ä¸º0
+    output          Positive;                   //rsæ˜¯å¦ä¸ºæ­£
+    output          Negative;                   //rsæ˜¯å¦ä¸ºè´Ÿ
+    output          Overflow;                   //æ˜¯å¦äº§ç”ŸåŠ å‡æ³•æº¢å‡º
+    output          Divide_zero;                //æ˜¯å¦é™¤0
     
-    input       Mfhi,Mflo,Mthi,Mtlo;            //ÊÇ·ñÎª¶ÁĞ´HI/LO¼Ä´æÆ÷µÄÖ¸Áî
+    input       Mfhi,Mflo,Mthi,Mtlo;            //æ˜¯å¦ä¸ºè¯»å†™HI/LOå¯„å­˜å™¨çš„æŒ‡ä»¤
     
     input       L_type,S_type;
     output      Memory_read,Memory_write,IO_read,IO_write;
     
-    //´¦ÀíÊı¾İ×ª·¢
+    //å¤„ç†æ•°æ®è½¬å‘
     input       Register_write_ex_mem,Register_write_mem_wb,Memory_or_IO_mem_wb;
     input[4:0]  Write_back_address_ex_mem,Write_back_address_mem_wb;
     input[31:0] ALU_result_ex_mem,ALU_result_mem_wb,Read_data_mem_wb;
@@ -62,21 +62,21 @@ module Execute(
     
     
     
-    wire[31:0]  Forwarded_data_1,Forwarded_data_2;  //¿¼ÂÇÁ÷Ë®ÖĞÊı¾İ×ª·¢ºóµÄread_data_1/2
+    wire[31:0]  Forwarded_data_1,Forwarded_data_2;  //è€ƒè™‘æµæ°´ä¸­æ•°æ®è½¬å‘åçš„read_data_1/2
     wire[31:0]  a_input,b_input;
     wire[5:0]   opcode;
     wire[4:0]   rs,rt;
     wire[4:0]   shamt;
     wire[5:0]   func;
     
-    wire[6:0]   exec_code;                      //¸¨Öú¼ÆËãALU_ctrl
-    wire[2:0]   ALU_ctrl;                       //ÓÃÓÚ½øĞĞALUµÄËãÊıÂß¼­ÔËËãÑ¡Ôñ
+    wire[6:0]   exec_code;                      //è¾…åŠ©è®¡ç®—ALU_ctrl
+    wire[2:0]   ALU_ctrl;                       //ç”¨äºè¿›è¡ŒALUçš„ç®—æ•°é€»è¾‘è¿ç®—é€‰æ‹©
     
-    wire        signed_mul_div;                 //ÊÇ·ñÎªÓĞ·ûºÅ³Ë³ı·¨
-    wire[31:0]  transformed_data_1,transformed_data_2;  //×ªÎªÕıÊıµÄa/b_input
+    wire        signed_mul_div;                 //æ˜¯å¦ä¸ºæœ‰ç¬¦å·ä¹˜é™¤æ³•
+    wire[31:0]  transformed_data_1,transformed_data_2;  //è½¬ä¸ºæ­£æ•°çš„a/b_input
     
-    wire        mul_sel;                        //ÊÇ·ñÎª³Ë·¨
-    wire        div_sel;                        //ÊÇ·ñÎª³ı·¨
+    wire        mul_sel;                        //æ˜¯å¦ä¸ºä¹˜æ³•
+    wire        div_sel;                        //æ˜¯å¦ä¸ºé™¤æ³•
     wire[63:0]  unsigned_mul_result;
     wire        divu_divisor_tvalid;
     wire        divu_dividend_tvalid;
@@ -84,11 +84,11 @@ module Execute(
     wire        divu_dout_tuser;
     wire[63:0]  unsigned_div_result;
     
-    reg         inverse_mul_div_result;         //¸ù¾İÔ­·ûºÅÎ»£¬È·¶¨ÊÇ·ñĞèÒª·´×ª½á¹û
-    reg[31:0]   ALU_output;                     //ËãÊıÂß¼­ÔËËã½á¹û
-    reg[31:0]   shift_result;                   //ÒÆÎ»ÔËËã½á¹û
+    reg         inverse_mul_div_result;         //æ ¹æ®åŸç¬¦å·ä½ï¼Œç¡®å®šæ˜¯å¦éœ€è¦åè½¬ç»“æœ
+    reg[31:0]   ALU_output;                     //ç®—æ•°é€»è¾‘è¿ç®—ç»“æœ
+    reg[31:0]   shift_result;                   //ç§»ä½è¿ç®—ç»“æœ
     reg[31:0]   hi,lo;
-    reg[31:0]   ALU_result;                     //×îÖÕÔËËã½á¹û
+    reg[31:0]   ALU_result;                     //æœ€ç»ˆè¿ç®—ç»“æœ
     
     
     
@@ -98,6 +98,8 @@ module Execute(
     assign shamt = Instruction[10:6];
     assign func = Instruction[5:0];
     
+    /*
+    this version forget to consider bgezal/bltzal/jal/jalr command which also write register
     assign Forwarded_data_1 =
                      (Register_write_ex_mem && Write_back_address_ex_mem != 0 && 
                          Write_back_address_ex_mem == rs)
@@ -114,17 +116,74 @@ module Execute(
                            Write_back_address_ex_mem != rs && Write_back_address_mem_wb == rt)
                        ? (Memory_or_IO_mem_wb ? Read_data_mem_wb : ALU_result_mem_wb)
                        : Read_data_2;
+    */
+    
+    //this version take those commands into consideration, but not tested
+    assign Forwarded_data_1 =
+                     (
+                         Register_write_ex_mem && Write_back_address_ex_mem != 5'd0 && 
+                         Write_back_address_ex_mem == rs && 
+                         !Bgezal_ex_mem && !Bltzal_ex_mem && !Jal_ex_mem
+                     )
+                     ? (Jalr_ex_mem ? PC_plus_4_latch_ex_mem : ALU_result_ex_mem)
+                     : (
+                         Register_write_ex_mem && rs == 5'd31 &&
+                         (Bgezal_ex_mem || Bltzal_ex_mem || Jal_ex_mem)
+                       )
+                       ? PC_plus_4_latch_ex_mem
+                       : (
+                           Register_write_mem_wb && Write_back_address_mem_wb != 5'd0 &&
+                           Write_back_address_ex_mem != rs && Write_back_address_mem_wb == rs &&
+                           !Bgezal_mem_wb && !Bltzal_mem_wb && !Jal_mem_wb
+                         )
+                         ? (
+                             Jalr_mem_wb ? PC_plus_4_latch_mem_wb
+                                         : (Memory_or_IO_mem_wb ? Read_data_mem_wb : ALU_result_mem_wb)
+                           )
+                         : (
+                             Register_write_mem_wb && Write_back_address_mem_wb != 5'd31 && rs == 5'd31 &&
+                             (Bgezal_mem_wb || Bltzal_mem_wb || Jal_mem_wb)
+                           )
+                           ? PC_plus_4_latch_mem_wb
+                           : Read_data_1;
+    assign Forwarded_data_2 =
+                     (
+                         Register_write_ex_mem && Write_back_address_ex_mem != 5'd0 && 
+                         Write_back_address_ex_mem == rt && 
+                         !Bgezal_ex_mem && !Bltzal_ex_mem && !Jal_ex_mem
+                     )
+                     ? (Jalr_ex_mem ? PC_plus_4_latch_ex_mem : ALU_result_ex_mem)
+                     : (
+                         Register_write_ex_mem && rt == 5'd31 &&
+                         (Bgezal_ex_mem || Bltzal_ex_mem || Jal_ex_mem)
+                       )
+                       ? PC_plus_4_latch_ex_mem
+                       : (
+                           Register_write_mem_wb && Write_back_address_mem_wb != 5'd0 &&
+                           Write_back_address_ex_mem != rt && Write_back_address_mem_wb == rt &&
+                           !Bgezal_mem_wb && !Bltzal_mem_wb && !Jal_mem_wb
+                         )
+                         ? (
+                             Jalr_mem_wb ? PC_plus_4_latch_mem_wb
+                                         : (Memory_or_IO_mem_wb ? Read_data_mem_wb : ALU_result_mem_wb)
+                           )
+                         : (
+                             Register_write_mem_wb && Write_back_address_mem_wb != 5'd31 && rt == 5'd31 &&
+                             (Bgezal_mem_wb || Bltzal_mem_wb || Jal_mem_wb)
+                           )
+                           ? PC_plus_4_latch_mem_wb
+                           : Read_data_2;
     
     assign a_input = Forwarded_data_1;
     assign b_input = ALU_src == 0 ? Forwarded_data_2 : Immediate_extend;
     
-    //½øĞĞALU_ctrlµÄÑ¡Ôñ
+    //è¿›è¡ŒALU_ctrlçš„é€‰æ‹©
     assign exec_code = (I_type == 1'b0) ? func : {3'b000, opcode[2:0]};
     assign ALU_ctrl[0] = (exec_code[0] | exec_code[3]) & ALU_op[1];
     assign ALU_ctrl[1] = (!exec_code[2]) | (!ALU_op[1]);
     assign ALU_ctrl[2] = (exec_code[1] & ALU_op[1]) | ALU_op[0];
     
-    //½øĞĞËãÊıÂß¼­ÔËËã
+    //è¿›è¡Œç®—æ•°é€»è¾‘è¿ç®—
     always @(ALU_ctrl or a_input or b_input)
     begin
         case (ALU_ctrl)
@@ -140,25 +199,25 @@ module Execute(
         endcase
     end
     
-    //¶ÔÓÚb_typeÖ¸ÁîµÄĞÂPC¼ÆËã
+    //å¯¹äºb_typeæŒ‡ä»¤çš„æ–°PCè®¡ç®—
     assign PC_add_result = PC_plus_4[31:2] + Immediate_extend[31:0];
     
-    //Zero±êÖ¾
+    //Zeroæ ‡å¿—
     assign Zero = (ALU_output == 32'h00000000) ? 1'b1 : 1'b0;
-    //Positive±êÖ¾
+    //Positiveæ ‡å¿—
     assign Positive = (Forwarded_data_1[31] == 1'b0 &&
                        Forwarded_data_1 != 32'h00000000)
                       ? 1'b1 : 1'b0;
-    //Negative±êÖ¾
+    //Negativeæ ‡å¿—
     assign Negative = Forwarded_data_1[31];
     
-    //Overflow±êÖ¾
-    assign Overflow = (ALU_ctrl[1:0] != 2'b10) ? 1'b0 : //Èô²»ÊÇÓĞ·ûºÅ¼Ó¼õ£¬Ôò²»²úÉúOverflow
+    //Overflowæ ‡å¿—
+    assign Overflow = (ALU_ctrl[1:0] != 2'b10) ? 1'b0 : //è‹¥ä¸æ˜¯æœ‰ç¬¦å·åŠ å‡ï¼Œåˆ™ä¸äº§ç”ŸOverflow
                           (ALU_ctrl[2] == 1'b0)
                           ? (a_input[31] == b_input[31] && a_input[31] != ALU_output[31])  //+
                           : (a_input[31] != b_input[31] && a_input[31] != ALU_output[31]); //-
     
-    //¶ÔÓÚÓĞ·ûºÅ³Ë³ı·¨£¬¶ÔÓÚÁ½¸ö²Ù×÷Êı½øĞĞ×ª»¯È¥·ûºÅ
+    //å¯¹äºæœ‰ç¬¦å·ä¹˜é™¤æ³•ï¼Œå¯¹äºä¸¤ä¸ªæ“ä½œæ•°è¿›è¡Œè½¬åŒ–å»ç¬¦å·
     assign signed_mul_div = (opcode == 6'b000000 && func[5:2] == 4'b0110 && func[0] == 1'b0)
                             ? 1'b1 : 1'b0;
     assign transformed_data_1 = (signed_mul_div && a_input[31])
@@ -171,7 +230,7 @@ module Execute(
     end
     
     
-    //ÎŞ·ûºÅ³Ë·¨Æ÷µÄÊµÀı»¯
+    //æ— ç¬¦å·ä¹˜æ³•å™¨çš„å®ä¾‹åŒ–
     assign mul_sel = (opcode == 6'b000000 && func[5:1] == 5'b01100) ? 1'b1 : 1'b0;
     
     multu multu(
@@ -180,24 +239,24 @@ module Execute(
         .P(unsigned_mul_result)                             //result
     );
     
-    //ÎŞ·ûºÅ³ı·¨Æ÷µÄÊµÀı»¯
+    //æ— ç¬¦å·é™¤æ³•å™¨çš„å®ä¾‹åŒ–
     assign div_sel = (opcode == 6'b000000 && func[5:1] == 5'b01101) ? 1'b1 : 1'b0;
     assign divu_divisor_tvalid = div_sel;
     assign divu_dividend_tvalid = div_sel;
     assign Divide_zero = (div_sel && transformed_data_2 == 32'h00000000) ? 1'b1 : 1'b0;
     
     divu divu(
-        .aclk(clock),                                       //[I]ÉÏÉıÑØÊ±ÖÓ
-        .s_axis_divisor_tvalid(divu_divisor_tvalid),        //[I]³ıÊıtvalid
-        .s_axis_divisor_tdata(transformed_data_2),          //[I]³ıÊı(32Î»)
-        .s_axis_dividend_tvalid(divu_dividend_tvalid),      //[I]±»³ıÊıtvalid
-        .s_axis_dividend_tdata(transformed_data_1),         //[I]±»³ıÊı(32Î»)
-        .m_axis_dout_tvalid(divu_dout_tvalid),              //[O]²úÉú½á¹ûÊ±tvalid±ä1
+        .aclk(clock),                                       //[I]ä¸Šå‡æ²¿æ—¶é’Ÿ
+        .s_axis_divisor_tvalid(divu_divisor_tvalid),        //[I]é™¤æ•°tvalid
+        .s_axis_divisor_tdata(transformed_data_2),          //[I]é™¤æ•°(32ä½)
+        .s_axis_dividend_tvalid(divu_dividend_tvalid),      //[I]è¢«é™¤æ•°tvalid
+        .s_axis_dividend_tdata(transformed_data_1),         //[I]è¢«é™¤æ•°(32ä½)
+        .m_axis_dout_tvalid(divu_dout_tvalid),              //[O]äº§ç”Ÿç»“æœæ—¶tvalidå˜1
         .m_axis_dout_tuser(divu_dout_tuser),                //[O]
-        .m_axis_dout_tdata(unsigned_div_result)             //[O](32{ÉÌ},32{ÓàÊı})
+        .m_axis_dout_tdata(unsigned_div_result)             //[O](32{å•†},32{ä½™æ•°})
     );
     
-    //³Ë³ıÔËËã/mt¸³Öµ½á¹ûĞ´ÈëHI/LO
+    //ä¹˜é™¤è¿ç®—/mtèµ‹å€¼ç»“æœå†™å…¥HI/LO
     always @(*)
     begin
         if (Mthi)
@@ -221,8 +280,8 @@ module Execute(
         end
     end
     
-    //Ö´ĞĞ6ÖÖÒÆÎ»Ö¸Áî
-    //¸ù¾İÖ®Ç°µÄ²âÊÔ>>>²¢²»»á×öËãÊıÓÒÒÆ£¬¹ÊÔİ²ÉÓÃÂß¼­ÒÆÎ»×éºÏµÄ·½Ê½ÊµÏÖ
+    //æ‰§è¡Œ6ç§ç§»ä½æŒ‡ä»¤
+    //æ ¹æ®ä¹‹å‰çš„æµ‹è¯•>>>å¹¶ä¸ä¼šåšç®—æ•°å³ç§»ï¼Œæ•…æš‚é‡‡ç”¨é€»è¾‘ç§»ä½ç»„åˆçš„æ–¹å¼å®ç°
     always @(*)
     begin
         if (Shift)
@@ -241,7 +300,7 @@ module Execute(
             shift_result = b_input;
     end
         
-    //½øĞĞ¸÷ÖÖ½á¹ûµÄ×ÛºÏ
+    //è¿›è¡Œå„ç§ç»“æœçš„ç»¼åˆ
     always @(*)
     begin
         //mfhi
@@ -252,8 +311,8 @@ module Execute(
             ALU_result = lo;
         //lui
         else if (opcode == 6'b001111)
-            ALU_result = Immediate_extend[15:0] << 16;          //Ò²Ğí»á³öÊÂ£¿
-        //ÒÆÎ»
+            ALU_result = Immediate_extend[15:0] << 16;          //ä¹Ÿè®¸ä¼šå‡ºäº‹ï¼Ÿ
+        //ç§»ä½
         else if (Shift)
             ALU_result = shift_result;
         //slt
@@ -278,19 +337,19 @@ module Execute(
     end
     
     //Memory_read
-    //Îªl_typeÇÒALU_result¸ß22Î»²»È«Îª1
+    //ä¸ºl_typeä¸”ALU_resulté«˜22ä½ä¸å…¨ä¸º1
     assign Memory_read = (L_type && ALU_result[31:10] != 22'h3FFFFF) ? 1'b1 : 1'b0;
     
     //Memory_write
-    //Îªs_typeÇÒALU_result¸ß22Î»²»È«Îª1
+    //ä¸ºs_typeä¸”ALU_resulté«˜22ä½ä¸å…¨ä¸º1
     assign Memory_write = (S_type && ALU_result[31:10] != 22'h3FFFFF) ? 1'b1 : 1'b0;
     
     //IO_read
-    //Îªl_typeÇÒALU_result¸ß22Î»È«Îª1
+    //ä¸ºl_typeä¸”ALU_resulté«˜22ä½å…¨ä¸º1
     assign IO_read = (L_type && ALU_result[31:10] == 22'h3FFFFF) ? 1'b1 : 1'b0;
     
     //IO_write
-    //Îªs_typeÇÒALU_result¸ß22Î»È«Îª1
+    //ä¸ºs_typeä¸”ALU_resulté«˜22ä½å…¨ä¸º1
     assign IO_write = (S_type && ALU_result[31:10] == 22'h3FFFFF) ? 1'b1 : 1'b0;
     
 endmodule

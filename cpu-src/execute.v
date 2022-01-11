@@ -128,7 +128,7 @@ module Execute(
                      ? (Jalr_ex_mem ? PC_plus_4_latch_ex_mem : ALU_result_ex_mem)
                      : (
                          Register_write_ex_mem && rs == 5'd31 &&
-                         (Bgezal_ex_mem || Bltzal_ex_mem || Jal_ex_mem)
+                         ((Bgezal_ex_mem && !Negative_ex_mem) || (Bltzal_ex_mem && Negative_ex_mem) || Jal_ex_mem)
                        )
                        ? PC_plus_4_latch_ex_mem
                        : (
@@ -142,7 +142,7 @@ module Execute(
                            )
                          : (
                              Register_write_mem_wb && Write_back_address_mem_wb != 5'd31 && rs == 5'd31 &&
-                             (Bgezal_mem_wb || Bltzal_mem_wb || Jal_mem_wb)
+                             ((Bgezal_mem_wb && !Negative_mem_wb) || (Bltzal_mem_wb && Negative_mem_wb) || Jal_mem_wb)
                            )
                            ? PC_plus_4_latch_mem_wb
                            : Read_data_1;
@@ -155,7 +155,7 @@ module Execute(
                      ? (Jalr_ex_mem ? PC_plus_4_latch_ex_mem : ALU_result_ex_mem)
                      : (
                          Register_write_ex_mem && rt == 5'd31 &&
-                         (Bgezal_ex_mem || Bltzal_ex_mem || Jal_ex_mem)
+                         ((Bgezal_ex_mem && !Negative_ex_mem) || (Bltzal_ex_mem && Negative_ex_mem) || Jal_ex_mem)
                        )
                        ? PC_plus_4_latch_ex_mem
                        : (
@@ -169,7 +169,7 @@ module Execute(
                            )
                          : (
                              Register_write_mem_wb && Write_back_address_mem_wb != 5'd31 && rt == 5'd31 &&
-                             (Bgezal_mem_wb || Bltzal_mem_wb || Jal_mem_wb)
+                             ((Bgezal_mem_wb && !Negative_mem_wb) || (Bltzal_mem_wb && Negative_mem_wb) || Jal_mem_wb)
                            )
                            ? PC_plus_4_latch_mem_wb
                            : Read_data_2;
